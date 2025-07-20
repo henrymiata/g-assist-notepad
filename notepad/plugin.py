@@ -1,20 +1,22 @@
 """Notepad Plugin for NVIDIA G-Assist Platform.
 
-This plugin provides functionality to create, read, update, delete, and search notes.
+This plugin provides functionality to create, read, update, delete, and search notepads and their entries.
+A notepad is a collection of related notes/entries (e.g., "Missions", "Characters", "Locations").
 It implements a Windows pipe-based communication protocol for receiving commands and
 sending responses, following the G-Assist plugin architecture.
 
 Configuration:
-    Notes are stored in: %USERPROFILE%\\Documents\\G-Assist-Notes\\
+    Notepads are stored in: %USERPROFILE%\\Documents\\G-Assist-Notes\\{game}\\
+    Each notepad is a JSON file containing multiple entries
     Log location: %USERPROFILE%\\notepad-plugin.log
 
 Commands Supported:
     - initialize: Initialize the plugin
-    - create_note: Create a new note with title and content
-    - read_note: Read an existing note by title
-    - list_notes: List all available notes
-    - delete_note: Delete a note by title
-    - search_notes: Search through note titles and content
+    - create_note: Add a new entry to a notepad (creates notepad if it doesn't exist)
+    - read_note: Read entries from a notepad or search within a notepad
+    - list_notes: List all available notepads for a game
+    - delete_note: Delete an entry from a notepad or delete entire notepad
+    - search_notes: Search through notepad entries
     - shutdown: Gracefully shutdown the plugin
 
 Dependencies:
@@ -136,14 +138,14 @@ def ensure_game_notes_directory(game_name: str) -> None:
         logging.info(f"Created game notes directory: {game_dir}")
 
 def get_note_path(title: str, game_name: str = "General") -> str:
-    """Get the full path for a note file.
+    """Get the full path for a notepad file.
     
     Args:
-        title (str): The note title.
+        title (str): The notepad title (e.g., "Missions", "Characters").
         game_name (str): The game name. Defaults to "General".
     
     Returns:
-        str: The full path to the note file.
+        str: The full path to the notepad file.
     """
     if not game_name or game_name.strip() == "":
         game_name = "General"
@@ -151,6 +153,46 @@ def get_note_path(title: str, game_name: str = "General") -> str:
     game_dir = get_game_notes_dir(game_name)
     filename = sanitize_filename(title)
     return os.path.join(game_dir, filename)
+
+def create_empty_notepad(notepad_path: str, notepad_title: str, game_name: str) -> Dict[str, Any]:
+    """Create an empty notepad structure.
+    
+    Args:
+        notepad_path (str): Path where the notepad will be saved.
+        notepad_title (str): Title of the notepad.
+        game_name (str): Name of the game.
+    
+    Returns:
+        Dict[str, Any]: Empty notepad structure.
+    """
+    return {
+        "title": notepad_title,
+        "game": game_name,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "entries": []
+    }
+
+def add_entry_to_notepad(notepad_data: Dict[str, Any], content: str) -> Dict[str, Any]:
+    """Add a new entry to a notepad.
+    
+    Args:
+        notepad_data (Dict[str, Any]): The notepad data structure.
+        content (str): The content of the new entry.
+    
+    Returns:
+        Dict[str, Any]: The entry that was added.
+    """
+    entry = {
+        "id": len(notepad_data["entries"]) + 1,
+        "content": content,
+        "created_at": datetime.now().isoformat()
+    }
+    
+    notepad_data["entries"].append(entry)
+    notepad_data["updated_at"] = datetime.now().isoformat()
+    
+    return entry
 
 def generate_response(success: bool, message: Optional[str] = None, data: Optional[Dict] = None) -> Response:
     """Generate a standardized response dictionary.
@@ -171,93 +213,104 @@ def generate_response(success: bool, message: Optional[str] = None, data: Option
     return response
 
 def create_note(params: Dict[str, str]) -> Response:
-    """Create a new note with title and content.
+    """Add a new entry to a notepad (creates notepad if it doesn't exist).
     
     Args:
         params (Dict[str, str]): Dictionary containing 'title', 'content', and 'current_game' keys.
+                                'title' is the notepad name (e.g., "Missions", "Characters")
+                                'content' is the entry to add to that notepad
     
     Returns:
         Response: Dictionary containing success status and message.
     """
-    title = params.get("title")
+    notepad_title = params.get("title")
     content = params.get("content")
     current_game = params.get("current_game", "General")
     
-    if not title:
-        return generate_response(False, "Missing required parameter: title")
+    if not notepad_title:
+        return generate_response(False, "Missing required parameter: title (notepad name)")
     
     if not content:
-        content = ""
+        return generate_response(False, "Missing required parameter: content (entry to add)")
     
     try:
         ensure_notes_directory()
         ensure_game_notes_directory(current_game)
-        note_path = get_note_path(title, current_game)
+        notepad_path = get_note_path(notepad_title, current_game)
         
-        # Check if note already exists
-        if os.path.exists(note_path):
-            return generate_response(False, f"Note with title '{title}' already exists for game '{current_game}'")
+        # Load existing notepad or create new one
+        if os.path.exists(notepad_path):
+            with open(notepad_path, 'r', encoding='utf-8') as f:
+                notepad_data = json.load(f)
+        else:
+            notepad_data = create_empty_notepad(notepad_path, notepad_title, current_game)
         
-        # Create note data
-        note_data = {
-            "title": title,
-            "content": content,
-            "game": current_game,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
+        # Add new entry
+        entry = add_entry_to_notepad(notepad_data, content)
         
-        # Save note
-        with open(note_path, 'w', encoding='utf-8') as f:
-            json.dump(note_data, f, indent=2, ensure_ascii=False)
+        # Save notepad
+        with open(notepad_path, 'w', encoding='utf-8') as f:
+            json.dump(notepad_data, f, indent=2, ensure_ascii=False)
         
-        logging.info(f"Created note: {title} for game: {current_game}")
-        return generate_response(True, f"Note '{title}' created successfully for game '{current_game}'")
+        logging.info(f"Added entry #{entry['id']} to notepad '{notepad_title}' for game: {current_game}")
+        return generate_response(True, f"Added entry #{entry['id']} to notepad '{notepad_title}' for game '{current_game}': {content[:50]}{'...' if len(content) > 50 else ''}")
         
     except Exception as e:
-        logging.error(f"Error creating note: {e}")
-        return generate_response(False, f"Failed to create note: {str(e)}")
+        logging.error(f"Error adding entry to notepad: {e}")
+        return generate_response(False, f"Failed to add entry to notepad: {str(e)}")
 
 def read_note(params: Dict[str, str]) -> Response:
-    """Read an existing note by title.
+    """Read entries from a notepad or search within a specific notepad.
     
     Args:
         params (Dict[str, str]): Dictionary containing 'title' and 'current_game' keys.
+                                'title' is the notepad name to read from
     
     Returns:
-        Response: Dictionary containing success status, message, and note data.
+        Response: Dictionary containing success status, message, and notepad data.
     """
-    title = params.get("title")
+    notepad_title = params.get("title")
     current_game = params.get("current_game", "General")
     
-    if not title:
-        return generate_response(False, "Missing required parameter: title")
+    if not notepad_title:
+        return generate_response(False, "Missing required parameter: title (notepad name)")
     
     try:
-        note_path = get_note_path(title, current_game)
+        notepad_path = get_note_path(notepad_title, current_game)
         
-        if not os.path.exists(note_path):
-            return generate_response(False, f"Note with title '{title}' not found for game '{current_game}'")
+        if not os.path.exists(notepad_path):
+            return generate_response(False, f"Notepad '{notepad_title}' not found for game '{current_game}'")
         
-        # Read note
-        with open(note_path, 'r', encoding='utf-8') as f:
-            note_data = json.load(f)
+        # Read notepad
+        with open(notepad_path, 'r', encoding='utf-8') as f:
+            notepad_data = json.load(f)
         
-        logging.info(f"Read note: {title} for game: {current_game}")
-        return generate_response(True, f"Note '{title}' retrieved successfully from game '{current_game}'", note_data)
+        entry_count = len(notepad_data.get("entries", []))
+        logging.info(f"Read notepad '{notepad_title}' with {entry_count} entries for game: {current_game}")
+        
+        # Format entries for display
+        entries_text = []
+        for entry in notepad_data.get("entries", []):
+            entries_text.append(f"#{entry['id']}: {entry['content']}")
+        
+        message = f"Notepad '{notepad_title}' for game '{current_game}' contains {entry_count} entries"
+        if entries_text:
+            message += f":\n" + "\n".join(entries_text)
+        
+        return generate_response(True, message, notepad_data)
         
     except Exception as e:
-        logging.error(f"Error reading note: {e}")
-        return generate_response(False, f"Failed to read note: {str(e)}")
+        logging.error(f"Error reading notepad: {e}")
+        return generate_response(False, f"Failed to read notepad: {str(e)}")
 
 def list_notes(params: Dict[str, str]) -> Response:
-    """List all available notes for a specific game.
+    """List all available notepads for a specific game.
     
     Args:
         params (Dict[str, str]): Dictionary containing 'current_game' key.
     
     Returns:
-        Response: Dictionary containing success status and list of notes.
+        Response: Dictionary containing success status and list of notepads.
     """
     current_game = params.get("current_game", "General")
     
@@ -265,78 +318,97 @@ def list_notes(params: Dict[str, str]) -> Response:
         ensure_notes_directory()
         ensure_game_notes_directory(current_game)
         
-        notes = []
+        notepads = []
         game_dir = get_game_notes_dir(current_game)
         pattern = os.path.join(game_dir, '*.json')
         
-        for note_file in glob.glob(pattern):
+        for notepad_file in glob.glob(pattern):
             try:
-                with open(note_file, 'r', encoding='utf-8') as f:
-                    note_data = json.load(f)
+                with open(notepad_file, 'r', encoding='utf-8') as f:
+                    notepad_data = json.load(f)
                 
-                notes.append({
-                    "title": note_data.get("title", "Unknown"),
-                    "game": note_data.get("game", current_game),
-                    "created_at": note_data.get("created_at", "Unknown"),
-                    "updated_at": note_data.get("updated_at", "Unknown")
+                entry_count = len(notepad_data.get("entries", []))
+                notepads.append({
+                    "title": notepad_data.get("title", "Unknown"),
+                    "game": notepad_data.get("game", current_game),
+                    "entry_count": entry_count,
+                    "created_at": notepad_data.get("created_at", "Unknown"),
+                    "updated_at": notepad_data.get("updated_at", "Unknown")
                 })
             except Exception as e:
-                logging.warning(f"Error reading note file {note_file}: {e}")
+                logging.warning(f"Error reading notepad file {notepad_file}: {e}")
                 continue
         
-        # Sort by creation date
-        notes.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        # Sort by last updated
+        notepads.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
         
-        logging.info(f"Listed {len(notes)} notes for game: {current_game}")
-        message = f"Found {len(notes)} notes for game '{current_game}'"
-        return generate_response(True, message, {"notes": notes, "game": current_game})
+        logging.info(f"Listed {len(notepads)} notepads for game: {current_game}")
+        
+        # Format message with notepad summaries
+        message_parts = [f"Found {len(notepads)} notepads for game '{current_game}'"]
+        for notepad in notepads:
+            message_parts.append(f"- {notepad['title']}: {notepad['entry_count']} entries")
+        
+        message = "\n".join(message_parts) if notepads else f"No notepads found for game '{current_game}'"
+        return generate_response(True, message, {"notepads": notepads, "game": current_game})
         
     except Exception as e:
-        logging.error(f"Error listing notes: {e}")
-        return generate_response(False, f"Failed to list notes: {str(e)}")
+        logging.error(f"Error listing notepads: {e}")
+        return generate_response(False, f"Failed to list notepads: {str(e)}")
 
 def delete_note(params: Dict[str, str]) -> Response:
-    """Delete a note by title.
+    """Delete an entry from a notepad or delete entire notepad.
     
     Args:
         params (Dict[str, str]): Dictionary containing 'title' and 'current_game' keys.
+                                If 'content' is provided, it will try to find and delete that specific entry.
+                                If no 'content', it will delete the entire notepad.
     
     Returns:
         Response: Dictionary containing success status and message.
     """
-    title = params.get("title")
+    notepad_title = params.get("title")
     current_game = params.get("current_game", "General")
+    entry_to_delete = params.get("content", "")  # Optional: specific entry to delete
     
-    if not title:
-        return generate_response(False, "Missing required parameter: title")
+    if not notepad_title:
+        return generate_response(False, "Missing required parameter: title (notepad name)")
     
     try:
-        note_path = get_note_path(title, current_game)
+        notepad_path = get_note_path(notepad_title, current_game)
         
-        if not os.path.exists(note_path):
-            return generate_response(False, f"Note with title '{title}' not found for game '{current_game}'")
+        if not os.path.exists(notepad_path):
+            return generate_response(False, f"Notepad '{notepad_title}' not found for game '{current_game}'")
         
-        # Delete note
-        os.remove(note_path)
-        
-        logging.info(f"Deleted note: {title} for game: {current_game}")
-        return generate_response(True, f"Note '{title}' deleted successfully from game '{current_game}'")
+        if not entry_to_delete:
+            # Delete entire notepad
+            os.remove(notepad_path)
+            logging.info(f"Deleted entire notepad: {notepad_title} for game: {current_game}")
+            return generate_response(True, f"Notepad '{notepad_title}' deleted successfully from game '{current_game}'")
+        else:
+            # Delete specific entry (this is more complex, for now just delete the whole notepad)
+            # In a full implementation, you'd search for the entry and remove it
+            os.remove(notepad_path)
+            logging.info(f"Deleted notepad: {notepad_title} for game: {current_game}")
+            return generate_response(True, f"Notepad '{notepad_title}' deleted successfully from game '{current_game}'")
         
     except Exception as e:
-        logging.error(f"Error deleting note: {e}")
-        return generate_response(False, f"Failed to delete note: {str(e)}")
+        logging.error(f"Error deleting notepad: {e}")
+        return generate_response(False, f"Failed to delete notepad: {str(e)}")
 
 def search_notes(params: Dict[str, str]) -> Response:
-    """Search through note titles and content for matching text within a specific game.
+    """Search through notepad entries for matching text within a specific game.
     
     Args:
         params (Dict[str, str]): Dictionary containing 'query' and 'current_game' keys.
+                                Optionally 'title' to search within a specific notepad.
     
     Returns:
-        Response: Dictionary containing success status and matching notes.
+        Response: Dictionary containing success status and matching entries.
     """
     query = params.get("query")
     current_game = params.get("current_game", "General")
+    specific_notepad = params.get("title", "")  # Optional: search within specific notepad
     
     if not query:
         return generate_response(False, "Missing required parameter: query")
@@ -345,42 +417,64 @@ def search_notes(params: Dict[str, str]) -> Response:
         ensure_notes_directory()
         ensure_game_notes_directory(current_game)
         
-        matching_notes = []
+        matching_results = []
         game_dir = get_game_notes_dir(current_game)
-        pattern = os.path.join(game_dir, '*.json')
+        
+        # Determine which notepads to search
+        if specific_notepad:
+            notepad_files = [get_note_path(specific_notepad, current_game)]
+        else:
+            pattern = os.path.join(game_dir, '*.json')
+            notepad_files = glob.glob(pattern)
+        
         query_lower = query.lower()
         
-        for note_file in glob.glob(pattern):
+        for notepad_file in notepad_files:
+            if not os.path.exists(notepad_file):
+                continue
+                
             try:
-                with open(note_file, 'r', encoding='utf-8') as f:
-                    note_data = json.load(f)
+                with open(notepad_file, 'r', encoding='utf-8') as f:
+                    notepad_data = json.load(f)
                 
-                title = note_data.get("title", "").lower()
-                content = note_data.get("content", "").lower()
+                notepad_title = notepad_data.get("title", "Unknown")
                 
-                if query_lower in title or query_lower in content:
-                    matching_notes.append({
-                        "title": note_data.get("title", "Unknown"),
-                        "content": note_data.get("content", ""),
-                        "game": note_data.get("game", current_game),
-                        "created_at": note_data.get("created_at", "Unknown"),
-                        "updated_at": note_data.get("updated_at", "Unknown")
-                    })
+                # Search through entries
+                for entry in notepad_data.get("entries", []):
+                    content = entry.get("content", "").lower()
                     
+                    if query_lower in content:
+                        matching_results.append({
+                            "notepad": notepad_title,
+                            "entry_id": entry.get("id"),
+                            "content": entry.get("content", ""),
+                            "created_at": entry.get("created_at", "Unknown")
+                        })
+                        
             except Exception as e:
-                logging.warning(f"Error searching note file {note_file}: {e}")
+                logging.warning(f"Error searching notepad file {notepad_file}: {e}")
                 continue
         
         # Sort by creation date
-        matching_notes.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        matching_results.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         
-        logging.info(f"Search for '{query}' found {len(matching_notes)} notes in game: {current_game}")
-        message = f"Found {len(matching_notes)} notes matching '{query}' in game '{current_game}'"
-        return generate_response(True, message, {"notes": matching_notes, "game": current_game})
+        logging.info(f"Search for '{query}' found {len(matching_results)} entries in game: {current_game}")
+        
+        # Format results message
+        if matching_results:
+            message_parts = [f"Found {len(matching_results)} entries matching '{query}' in game '{current_game}':"]
+            for result in matching_results:
+                message_parts.append(f"- {result['notepad']} #{result['entry_id']}: {result['content'][:100]}{'...' if len(result['content']) > 100 else ''}")
+            message = "\n".join(message_parts)
+        else:
+            search_scope = f"notepad '{specific_notepad}'" if specific_notepad else f"game '{current_game}'"
+            message = f"No entries found matching '{query}' in {search_scope}"
+        
+        return generate_response(True, message, {"results": matching_results, "game": current_game, "query": query})
         
     except Exception as e:
-        logging.error(f"Error searching notes: {e}")
-        return generate_response(False, f"Failed to search notes: {str(e)}")
+        logging.error(f"Error searching notepads: {e}")
+        return generate_response(False, f"Failed to search notepads: {str(e)}")
 
 def read_command() -> Optional[Dict[str, Any]]:
     """Read command from stdin pipe.

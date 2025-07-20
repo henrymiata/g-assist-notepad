@@ -6,20 +6,20 @@
   "functions": [
     {
       "name": "create_note",
-      "description": "Creates a new note with the specified title and content.",
+      "description": "Adds a new entry to a notepad (creates notepad if it doesn't exist). Use this to categorize notes like 'Missions', 'Characters', 'Locations', etc.",
       "tags": [
         "notepad",
         "create",
-        "note"
+        "entry"
       ],
       "properties": {
         "title": {
           "type": "string",
-          "description": "The title of the note."
+          "description": "The notepad name/category (e.g., 'Missions', 'Characters', 'Locations')."
         },
         "content": {
           "type": "string",
-          "description": "The content of the note."
+          "description": "The entry content to add to this notepad."
         },
         "current_game": {
           "type": "string",
@@ -29,16 +29,16 @@
     },
     {
       "name": "read_note",
-      "description": "Reads the content of an existing note by title.",
+      "description": "Reads all entries from a notepad by notepad name.",
       "tags": [
         "notepad",
         "read",
-        "note"
+        "entries"
       ],
       "properties": {
         "title": {
           "type": "string",
-          "description": "The title of the note to read."
+          "description": "The notepad name to read from (e.g., 'Missions', 'Characters')."
         },
         "current_game": {
           "type": "string",
@@ -48,11 +48,11 @@
     },
     {
       "name": "list_notes",
-      "description": "Lists all available notes with their titles and creation dates.",
+      "description": "Lists all available notepads with their entry counts for the current game.",
       "tags": [
         "notepad",
         "list",
-        "notes"
+        "notepads"
       ],
       "properties": {
         "current_game": {
@@ -63,16 +63,16 @@
     },
     {
       "name": "delete_note",
-      "description": "Deletes a note by title.",
+      "description": "Deletes an entire notepad by name.",
       "tags": [
         "notepad",
         "delete",
-        "note"
+        "notepad"
       ],
       "properties": {
         "title": {
           "type": "string",
-          "description": "The title of the note to delete."
+          "description": "The notepad name to delete."
         },
         "current_game": {
           "type": "string",
@@ -82,16 +82,16 @@
     },
     {
       "name": "search_notes",
-      "description": "Searches through note titles and content for matching text.",
+      "description": "Searches through notepad entries for matching text. Can search all notepads or a specific notepad.",
       "tags": [
         "notepad",
         "search",
-        "notes"
+        "entries"
       ],
       "properties": {
         "query": {
           "type": "string",
-          "description": "The search query to find in notes."
+          "description": "The search query to find in notepad entries."
         },
         "current_game": {
           "type": "string",
