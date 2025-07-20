@@ -92,17 +92,65 @@ def sanitize_filename(title: str) -> str:
     # Limit length and add extension
     return title[:100] + '.json'
 
-def get_note_path(title: str) -> str:
+def sanitize_game_name(game_name: str) -> str:
+    """Sanitize a game name to be used as a folder name.
+    
+    Args:
+        game_name (str): The game name to sanitize.
+    
+    Returns:
+        str: A safe folder name.
+    """
+    # Remove or replace invalid characters
+    invalid_chars = '<>:"/\\|?*'
+    for char in invalid_chars:
+        game_name = game_name.replace(char, '_')
+    
+    # Limit length
+    return game_name[:100]
+
+def get_game_notes_dir(game_name: str) -> str:
+    """Get the directory for notes of a specific game.
+    
+    Args:
+        game_name (str): The name of the game.
+    
+    Returns:
+        str: The full path to the game's notes directory.
+    """
+    if not game_name or game_name.strip() == "":
+        game_name = "General"
+    
+    safe_game_name = sanitize_game_name(game_name)
+    return os.path.join(NOTES_DIR, safe_game_name)
+
+def ensure_game_notes_directory(game_name: str) -> None:
+    """Ensure the game-specific notes directory exists.
+    
+    Args:
+        game_name (str): The name of the game.
+    """
+    game_dir = get_game_notes_dir(game_name)
+    if not os.path.exists(game_dir):
+        os.makedirs(game_dir)
+        logging.info(f"Created game notes directory: {game_dir}")
+
+def get_note_path(title: str, game_name: str = "General") -> str:
     """Get the full path for a note file.
     
     Args:
         title (str): The note title.
+        game_name (str): The game name. Defaults to "General".
     
     Returns:
         str: The full path to the note file.
     """
+    if not game_name or game_name.strip() == "":
+        game_name = "General"
+    
+    game_dir = get_game_notes_dir(game_name)
     filename = sanitize_filename(title)
-    return os.path.join(NOTES_DIR, filename)
+    return os.path.join(game_dir, filename)
 
 def generate_response(success: bool, message: Optional[str] = None, data: Optional[Dict] = None) -> Response:
     """Generate a standardized response dictionary.
@@ -126,13 +174,14 @@ def create_note(params: Dict[str, str]) -> Response:
     """Create a new note with title and content.
     
     Args:
-        params (Dict[str, str]): Dictionary containing 'title' and 'content' keys.
+        params (Dict[str, str]): Dictionary containing 'title', 'content', and 'current_game' keys.
     
     Returns:
         Response: Dictionary containing success status and message.
     """
     title = params.get("title")
     content = params.get("content")
+    current_game = params.get("current_game", "General")
     
     if not title:
         return generate_response(False, "Missing required parameter: title")
@@ -142,16 +191,18 @@ def create_note(params: Dict[str, str]) -> Response:
     
     try:
         ensure_notes_directory()
-        note_path = get_note_path(title)
+        ensure_game_notes_directory(current_game)
+        note_path = get_note_path(title, current_game)
         
         # Check if note already exists
         if os.path.exists(note_path):
-            return generate_response(False, f"Note with title '{title}' already exists")
+            return generate_response(False, f"Note with title '{title}' already exists for game '{current_game}'")
         
         # Create note data
         note_data = {
             "title": title,
             "content": content,
+            "game": current_game,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
@@ -160,8 +211,8 @@ def create_note(params: Dict[str, str]) -> Response:
         with open(note_path, 'w', encoding='utf-8') as f:
             json.dump(note_data, f, indent=2, ensure_ascii=False)
         
-        logging.info(f"Created note: {title}")
-        return generate_response(True, f"Note '{title}' created successfully")
+        logging.info(f"Created note: {title} for game: {current_game}")
+        return generate_response(True, f"Note '{title}' created successfully for game '{current_game}'")
         
     except Exception as e:
         logging.error(f"Error creating note: {e}")
@@ -171,47 +222,52 @@ def read_note(params: Dict[str, str]) -> Response:
     """Read an existing note by title.
     
     Args:
-        params (Dict[str, str]): Dictionary containing 'title' key.
+        params (Dict[str, str]): Dictionary containing 'title' and 'current_game' keys.
     
     Returns:
         Response: Dictionary containing success status, message, and note data.
     """
     title = params.get("title")
+    current_game = params.get("current_game", "General")
     
     if not title:
         return generate_response(False, "Missing required parameter: title")
     
     try:
-        note_path = get_note_path(title)
+        note_path = get_note_path(title, current_game)
         
         if not os.path.exists(note_path):
-            return generate_response(False, f"Note with title '{title}' not found")
+            return generate_response(False, f"Note with title '{title}' not found for game '{current_game}'")
         
         # Read note
         with open(note_path, 'r', encoding='utf-8') as f:
             note_data = json.load(f)
         
-        logging.info(f"Read note: {title}")
-        return generate_response(True, f"Note '{title}' retrieved successfully", note_data)
+        logging.info(f"Read note: {title} for game: {current_game}")
+        return generate_response(True, f"Note '{title}' retrieved successfully from game '{current_game}'", note_data)
         
     except Exception as e:
         logging.error(f"Error reading note: {e}")
         return generate_response(False, f"Failed to read note: {str(e)}")
 
 def list_notes(params: Dict[str, str]) -> Response:
-    """List all available notes.
+    """List all available notes for a specific game.
     
     Args:
-        params (Dict[str, str]): Unused parameters dictionary.
+        params (Dict[str, str]): Dictionary containing 'current_game' key.
     
     Returns:
         Response: Dictionary containing success status and list of notes.
     """
+    current_game = params.get("current_game", "General")
+    
     try:
         ensure_notes_directory()
+        ensure_game_notes_directory(current_game)
         
         notes = []
-        pattern = os.path.join(NOTES_DIR, '*.json')
+        game_dir = get_game_notes_dir(current_game)
+        pattern = os.path.join(game_dir, '*.json')
         
         for note_file in glob.glob(pattern):
             try:
@@ -220,6 +276,7 @@ def list_notes(params: Dict[str, str]) -> Response:
                 
                 notes.append({
                     "title": note_data.get("title", "Unknown"),
+                    "game": note_data.get("game", current_game),
                     "created_at": note_data.get("created_at", "Unknown"),
                     "updated_at": note_data.get("updated_at", "Unknown")
                 })
@@ -230,9 +287,9 @@ def list_notes(params: Dict[str, str]) -> Response:
         # Sort by creation date
         notes.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         
-        logging.info(f"Listed {len(notes)} notes")
-        message = f"Found {len(notes)} notes"
-        return generate_response(True, message, {"notes": notes})
+        logging.info(f"Listed {len(notes)} notes for game: {current_game}")
+        message = f"Found {len(notes)} notes for game '{current_game}'"
+        return generate_response(True, message, {"notes": notes, "game": current_game})
         
     except Exception as e:
         logging.error(f"Error listing notes: {e}")
@@ -242,51 +299,55 @@ def delete_note(params: Dict[str, str]) -> Response:
     """Delete a note by title.
     
     Args:
-        params (Dict[str, str]): Dictionary containing 'title' key.
+        params (Dict[str, str]): Dictionary containing 'title' and 'current_game' keys.
     
     Returns:
         Response: Dictionary containing success status and message.
     """
     title = params.get("title")
+    current_game = params.get("current_game", "General")
     
     if not title:
         return generate_response(False, "Missing required parameter: title")
     
     try:
-        note_path = get_note_path(title)
+        note_path = get_note_path(title, current_game)
         
         if not os.path.exists(note_path):
-            return generate_response(False, f"Note with title '{title}' not found")
+            return generate_response(False, f"Note with title '{title}' not found for game '{current_game}'")
         
         # Delete note
         os.remove(note_path)
         
-        logging.info(f"Deleted note: {title}")
-        return generate_response(True, f"Note '{title}' deleted successfully")
+        logging.info(f"Deleted note: {title} for game: {current_game}")
+        return generate_response(True, f"Note '{title}' deleted successfully from game '{current_game}'")
         
     except Exception as e:
         logging.error(f"Error deleting note: {e}")
         return generate_response(False, f"Failed to delete note: {str(e)}")
 
 def search_notes(params: Dict[str, str]) -> Response:
-    """Search through note titles and content for matching text.
+    """Search through note titles and content for matching text within a specific game.
     
     Args:
-        params (Dict[str, str]): Dictionary containing 'query' key.
+        params (Dict[str, str]): Dictionary containing 'query' and 'current_game' keys.
     
     Returns:
         Response: Dictionary containing success status and matching notes.
     """
     query = params.get("query")
+    current_game = params.get("current_game", "General")
     
     if not query:
         return generate_response(False, "Missing required parameter: query")
     
     try:
         ensure_notes_directory()
+        ensure_game_notes_directory(current_game)
         
         matching_notes = []
-        pattern = os.path.join(NOTES_DIR, '*.json')
+        game_dir = get_game_notes_dir(current_game)
+        pattern = os.path.join(game_dir, '*.json')
         query_lower = query.lower()
         
         for note_file in glob.glob(pattern):
@@ -301,6 +362,7 @@ def search_notes(params: Dict[str, str]) -> Response:
                     matching_notes.append({
                         "title": note_data.get("title", "Unknown"),
                         "content": note_data.get("content", ""),
+                        "game": note_data.get("game", current_game),
                         "created_at": note_data.get("created_at", "Unknown"),
                         "updated_at": note_data.get("updated_at", "Unknown")
                     })
@@ -312,9 +374,9 @@ def search_notes(params: Dict[str, str]) -> Response:
         # Sort by creation date
         matching_notes.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         
-        logging.info(f"Search for '{query}' found {len(matching_notes)} notes")
-        message = f"Found {len(matching_notes)} notes matching '{query}'"
-        return generate_response(True, message, {"notes": matching_notes})
+        logging.info(f"Search for '{query}' found {len(matching_notes)} notes in game: {current_game}")
+        message = f"Found {len(matching_notes)} notes matching '{query}' in game '{current_game}'"
+        return generate_response(True, message, {"notes": matching_notes, "game": current_game})
         
     except Exception as e:
         logging.error(f"Error searching notes: {e}")
