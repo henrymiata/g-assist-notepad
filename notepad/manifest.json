@@ -1,0 +1,82 @@
+{
+  "manifestVersion": 1,
+  "executable": "g-assist-plugin-notepad.exe",
+  "persistent": false,
+  "passthrough": false,
+  "functions": [
+    {
+      "name": "create_note",
+      "description": "Creates a new note with the specified title and content.",
+      "tags": [
+        "notepad",
+        "create",
+        "note"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the note."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the note."
+        }
+      }
+    },
+    {
+      "name": "read_note",
+      "description": "Reads the content of an existing note by title.",
+      "tags": [
+        "notepad",
+        "read",
+        "note"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the note to read."
+        }
+      }
+    },
+    {
+      "name": "list_notes",
+      "description": "Lists all available notes with their titles and creation dates.",
+      "tags": [
+        "notepad",
+        "list",
+        "notes"
+      ],
+      "properties": {}
+    },
+    {
+      "name": "delete_note",
+      "description": "Deletes a note by title.",
+      "tags": [
+        "notepad",
+        "delete",
+        "note"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the note to delete."
+        }
+      }
+    },
+    {
+      "name": "search_notes",
+      "description": "Searches through note titles and content for matching text.",
+      "tags": [
+        "notepad",
+        "search",
+        "notes"
+      ],
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "The search query to find in notes."
+        }
+      }
+    }
+  ]
+}
