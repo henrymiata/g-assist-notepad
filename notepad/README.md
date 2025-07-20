@@ -1,23 +1,28 @@
 # Notepad Plugin for NVIDIA G-Assist
 
-A powerful note-taking plugin for NVIDIA G-Assist that lets you create, manage, and search notes directly through the G-Assist platform. Keep your thoughts organized and easily accessible without leaving your G-Assist experience.
+A powerful note-taking plugin for NVIDIA G-Assist that lets you create, manage, and search notepads directly through the G-Assist platform. Organize your notes by game and category, and easily export them for backup or sharing.
 
 ## What Can It Do?
-- Create new notes with custom titles and content
-- Read existing notes by title
-- List all your notes with creation/update timestamps
-- Delete notes you no longer need
-- Search through note titles and content
+- Create new notepad entries with custom categories and content
+- Read existing notepads with all their entries
+- List all your notepads with entry counts and timestamps
+- Delete notepads you no longer need
+- Search through notepad entries across all categories
+- Export notepads to human-readable text files on your Desktop
+- Game-specific organization (notes are separated by current game)
 - Automatic file management and organization
 - Detailed logging for troubleshooting
 
 ## Features
-- **Simple Note Management**: Create, read, update, and delete notes with ease
-- **Smart Search**: Find notes by searching through titles and content
-- **Organized Storage**: Notes are automatically saved in your Documents folder
-- **Safe Filenames**: Automatically handles special characters in note titles
-- **Timestamped**: All notes include creation and modification timestamps
-- **JSON Format**: Notes are stored in a readable JSON format for easy backup
+- **Notepad Organization**: Create themed notepads like "Missions", "Characters", "Locations"
+- **Game Separation**: Notes are automatically organized by the current game you're playing
+- **Smart Search**: Find entries by searching through all notepad content
+- **Export Functionality**: Export individual notepads, game collections, or everything to Desktop
+- **Entry Management**: Each notepad contains multiple numbered entries
+- **Organized Storage**: Notes are automatically saved in your Documents folder with game folders
+- **Safe Filenames**: Automatically handles special characters in notepad titles and game names
+- **Timestamped**: All notepads and entries include creation and modification timestamps
+- **JSON Format**: Notepads are stored in a readable JSON format for easy backup
 
 ## Before You Start
 Make sure you have:
@@ -53,36 +58,61 @@ This creates the executable and prepares all necessary files.
 
 ## Usage Examples
 
-### Creating a Note
-"Hey G-Assist, create a note titled 'Meeting Notes' with content 'Discuss project timeline and deliverables'"
+### Creating Notepad Entries
+"Hey G-Assist, create a note titled 'Missions' with content 'Kill 100 monsters and report back to Prof Amy'"
+"Hey G-Assist, create a note titled 'Characters' with content 'Prof Amy teaches cybernetics at Night City University'"
 
-### Reading a Note
-"Hey G-Assist, read my note titled 'Meeting Notes'"
+### Reading a Notepad
+"Hey G-Assist, read my notepad titled 'Missions'"
 
-### Listing All Notes
-"Hey G-Assist, list all my notes"
+### Listing All Notepads
+"Hey G-Assist, list all my notepads"
 
-### Searching Notes
-"Hey G-Assist, search my notes for 'project'"
+### Searching Notepad Entries
+"Hey G-Assist, search my notes for 'Prof Amy'"
 
-### Deleting a Note
-"Hey G-Assist, delete my note titled 'Old Ideas'"
+### Exporting Notepads
+"Hey G-Assist, export my notepad titled 'Missions'" (exports single notepad)
+"Hey G-Assist, export my current game notes" (exports all notepads from current game)
+"Hey G-Assist, export all my notes" (exports all notepads from all games)
+
+### Deleting a Notepad
+"Hey G-Assist, delete my notepad titled 'Old Ideas'"
 
 ## Note Storage
-- Notes are stored in: `%USERPROFILE%\Documents\G-Assist-Notes\`
-- Each note is saved as a JSON file with a sanitized filename
+- Notes are stored in: `%USERPROFILE%\Documents\G-Assist-Notes\{Game Name}\`
+- Each notepad is saved as a JSON file containing multiple entries
+- Exported files are saved to your Desktop with timestamps
 - Log files are saved to: `%USERPROFILE%\notepad-plugin.log`
 
-## Note Format
-Each note is stored as a JSON file containing:
+## Notepad Format
+Each notepad is stored as a JSON file containing:
 ```json
 {
-  "title": "Note Title",
-  "content": "Note content here...",
+  "title": "Missions",
+  "game": "Cyberpunk 2077",
   "created_at": "2024-03-14T12:34:56.789123",
-  "updated_at": "2024-03-14T12:34:56.789123"
+  "updated_at": "2024-03-14T12:45:30.123456",
+  "entries": [
+    {
+      "id": 1,
+      "content": "Kill 100 monsters and report back to Prof Amy",
+      "created_at": "2024-03-14T12:34:56.789123"
+    },
+    {
+      "id": 2,
+      "content": "Collect 50 cybernetic implants from corpo district",
+      "created_at": "2024-03-14T12:40:15.456789"
+    }
+  ]
 }
 ```
+
+## Export Format
+Exported files are human-readable text files with clear formatting:
+- Single notepad exports: `G-Assist_Export_{Game}_{Notepad}_{Timestamp}.txt`
+- Game exports: `G-Assist_Export_{Game}_All_Notepads_{Timestamp}.txt`
+- Master exports: `G-Assist_Export_All_Games_{Timestamp}.txt`
 
 ## Troubleshooting
 
@@ -97,9 +127,10 @@ Each note is stored as a JSON file containing:
 - Verify the plugin files are in the correct G-Assist directory
 
 ### Common Issues
-1. **"Note already exists"**: Use a different title or delete the existing note first
-2. **"Note not found"**: Check the exact title spelling and case
+1. **"Notepad already exists"**: You can add multiple entries to the same notepad
+2. **"Notepad not found"**: Check the exact notepad title spelling and current game
 3. **Permission errors**: Ensure you have write access to the Documents folder
+4. **Export file not found**: Check your Desktop folder and ensure sufficient disk space
 
 ## Development
 This plugin follows the standard G-Assist plugin architecture:

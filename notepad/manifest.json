@@ -98,6 +98,29 @@
           "description": "The currently playing game name for organizing notes by game."
         }
       }
+    },
+    {
+      "name": "export_notes",
+      "description": "Exports notepads to human-readable text format on the Desktop. Can export a single notepad, all notepads from a game, or all notepads from all games.",
+      "tags": [
+        "notepad",
+        "export",
+        "backup"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "description": "Export scope: 'notepad' (single notepad), 'game' (all notepads from current game), or 'all' (all notepads from all games). Default: 'game'."
+        },
+        "title": {
+          "type": "string",
+          "description": "The notepad name to export (required when scope is 'notepad')."
+        },
+        "current_game": {
+          "type": "string",
+          "description": "The currently playing game name (required for 'notepad' and 'game' scope)."
+        }
+      }
     }
   ]
 }

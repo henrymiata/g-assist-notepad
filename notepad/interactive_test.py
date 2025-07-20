@@ -36,7 +36,7 @@ ctypes.wintypes = MockWinTypes()
 
 # Now import the plugin
 from plugin import (
-    create_note, read_note, list_notes, delete_note, search_notes,
+    create_note, read_note, list_notes, delete_note, search_notes, export_notes,
     initialize, shutdown, generate_response
 )
 
@@ -63,7 +63,8 @@ class InteractiveNotepadInterface:
         print("📖 read <notepad>             - Read notepad entries")
         print("📝 list                       - List all notepads")
         print("🔍 search <query>             - Search entries")
-        print("🗑️  delete <notepad>           - Delete notepad")
+        print("� export [scope] [notepad]   - Export to Desktop")
+        print("�🗑️  delete <notepad>           - Delete notepad")
         print("🎮 game <name>                - Change current game")
         print("❓ help                       - Show this help")
         print("🚪 quit                       - Exit interface")
@@ -71,6 +72,9 @@ class InteractiveNotepadInterface:
         print("   add Missions Kill 100 monsters for Prof Amy")
         print("   read Missions")
         print("   search Prof Amy")
+        print("   export notepad Missions    (export single notepad)")
+        print("   export game                (export current game)")
+        print("   export all                 (export all games)")
         print("   game Cyberpunk 2077")
         print("━" * 40)
         
@@ -180,6 +184,61 @@ class InteractiveNotepadInterface:
         response = search_notes(params)
         print(self.format_response(response))
         
+    def cmd_export(self, args: list) -> None:
+        """Handle export command."""
+        if len(args) == 0:
+            # Default: export current game
+            scope = "game"
+            notepad = ""
+        elif len(args) == 1:
+            if args[0].lower() in ["all", "game"]:
+                scope = args[0].lower()
+                notepad = ""
+            else:
+                # Assume it's a notepad name with default scope
+                scope = "notepad"
+                notepad = args[0]
+        elif len(args) == 2:
+            if args[0].lower() == "notepad":
+                scope = "notepad"
+                notepad = args[1]
+            else:
+                print("❌ Usage: export [scope] [notepad]")
+                print("   Examples:")
+                print("     export                    (export current game)")
+                print("     export game               (export current game)")
+                print("     export all                (export all games)")
+                print("     export notepad Missions   (export specific notepad)")
+                print("     export Missions           (export specific notepad)")
+                return
+        else:
+            print("❌ Usage: export [scope] [notepad]")
+            print("   Examples:")
+            print("     export                    (export current game)")
+            print("     export game               (export current game)")
+            print("     export all                (export all games)")
+            print("     export notepad Missions   (export specific notepad)")
+            print("     export Missions           (export specific notepad)")
+            return
+        
+        params = {
+            "scope": scope,
+            "current_game": self.current_game
+        }
+        
+        if notepad:
+            params["title"] = notepad
+        
+        scope_desc = {
+            "notepad": f"notepad '{notepad}'",
+            "game": f"game '{self.current_game}'",
+            "all": "all games"
+        }
+        
+        print(f"🔄 Exporting {scope_desc[scope]} to Desktop...")
+        response = export_notes(params)
+        print(self.format_response(response))
+        
     def cmd_delete(self, args: list) -> None:
         """Handle delete command."""
         if len(args) != 1:
@@ -241,6 +300,7 @@ class InteractiveNotepadInterface:
             'read': self.cmd_read,
             'list': self.cmd_list,
             'search': self.cmd_search,
+            'export': self.cmd_export,
             'delete': self.cmd_delete,
             'game': self.cmd_game,
             'help': self.cmd_help,

@@ -1,0 +1,38 @@
+{
+  "title": "Inventory",
+  "game": "Test Game",
+  "created_at": "2025-07-20T08:53:32.953586",
+  "updated_at": "2025-07-20T16:50:38.026600",
+  "entries": [
+    {
+      "id": 1,
+      "content": "Mantis Blades - cybernetic arm weapons for close combat",
+      "created_at": "2025-07-20T08:53:32.953593"
+    },
+    {
+      "id": 2,
+      "content": "Sandevistan - time dilation cyberware implant",
+      "created_at": "2025-07-20T08:53:32.953924"
+    },
+    {
+      "id": 3,
+      "content": "Mantis Blades - cybernetic arm weapons for close combat",
+      "created_at": "2025-07-20T16:48:02.935921"
+    },
+    {
+      "id": 4,
+      "content": "Sandevistan - time dilation cyberware implant",
+      "created_at": "2025-07-20T16:48:02.936111"
+    },
+    {
+      "id": 5,
+      "content": "Mantis Blades - cybernetic arm weapons for close combat",
+      "created_at": "2025-07-20T16:50:38.026413"
+    },
+    {
+      "id": 6,
+      "content": "Sandevistan - time dilation cyberware implant",
+      "created_at": "2025-07-20T16:50:38.026598"
+    }
+  ]
+}

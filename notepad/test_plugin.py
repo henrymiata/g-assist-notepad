@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
-Automated Test Suite for Notepad Plugin
+Automated# Now import the plugin
+from plugin import (
+    create_note, read_note, list_notes, delete_note, search_notes, export_notes,
+    initialize, shutdown, generate_response, ensure_notes_directory,
+    get_note_path, create_empty_notepad, add_entry_to_notepad
+)Suite for Notepad Plugin
 
 This script tests all the functionality of the notepad plugin without
 requiring the actual G-Assist platform. It simulates the JSON commands
@@ -38,7 +43,7 @@ ctypes.wintypes = MockWinTypes()
 from plugin import (
     create_note, read_note, list_notes, delete_note, search_notes,
     initialize, shutdown, generate_response, ensure_notes_directory,
-    get_note_path, create_empty_notepad, add_entry_to_notepad
+    get_note_path, create_empty_notepad, add_entry_to_notepad, export_notes
 )
 
 class NotepadPluginTester:
@@ -315,7 +320,7 @@ class NotepadPluginTester:
         if success:
             # Verify content is from original game, not the new game
             message = response.get('message', '')
-            if 'Prof Amy' in message and 'Different game mission' not in message:
+            if 'lv2 monsters' in message and 'Different game mission' not in message:
                 print("   ✓ Games properly separated")
             else:
                 print("   ❌ Game separation failed")
@@ -330,7 +335,7 @@ class NotepadPluginTester:
         
         if success:
             message = response.get('message', '')
-            if 'Different game mission' in message and 'Prof Amy' not in message:
+            if 'Different game mission' in message and 'lv2 monsters' not in message:
                 print("   ✓ Different game has correct content")
                 
     def test_shutdown(self):
@@ -338,6 +343,96 @@ class NotepadPluginTester:
         response = shutdown()
         self.assert_response(response, True, "Plugin shutdown")
         
+    def test_export_notes(self):
+        """Test exporting notepads to Desktop."""
+        # Test export single notepad
+        params = {
+            "scope": "notepad",
+            "title": "Missions",
+            "current_game": self.test_game
+        }
+        response = export_notes(params)
+        success = self.assert_response(response, True, "Export single notepad")
+        
+        if success:
+            data = response.get('data', {})
+            exported_files = data.get('exported_files', [])
+            if len(exported_files) == 1:
+                print("   ✓ Single notepad exported successfully")
+                # Check if file exists
+                if os.path.exists(exported_files[0]):
+                    print("   ✓ Export file created on Desktop")
+                    # Clean up test file
+                    try:
+                        os.remove(exported_files[0])
+                        print("   ✓ Test export file cleaned up")
+                    except:
+                        pass
+                        
+        # Test export current game
+        params = {
+            "scope": "game",
+            "current_game": self.test_game
+        }
+        response = export_notes(params)
+        success = self.assert_response(response, True, "Export current game")
+        
+        if success:
+            data = response.get('data', {})
+            exported_files = data.get('exported_files', [])
+            if len(exported_files) == 1:
+                print("   ✓ Game export created successfully")
+                # Clean up test file
+                try:
+                    os.remove(exported_files[0])
+                    print("   ✓ Test export file cleaned up")
+                except:
+                    pass
+                    
+        # Test export all games
+        params = {
+            "scope": "all"
+        }
+        response = export_notes(params)
+        success = self.assert_response(response, True, "Export all games")
+        
+        if success:
+            data = response.get('data', {})
+            exported_files = data.get('exported_files', [])
+            if len(exported_files) == 1:
+                print("   ✓ Master export created successfully")
+                # Clean up test file
+                try:
+                    os.remove(exported_files[0])
+                    print("   ✓ Test export file cleaned up")
+                except:
+                    pass
+                    
+        # Test invalid scope
+        params = {
+            "scope": "invalid",
+            "current_game": self.test_game
+        }
+        response = export_notes(params)
+        self.assert_response(response, False, "Export with invalid scope (should fail)")
+        
+        # Test missing title for notepad scope
+        params = {
+            "scope": "notepad",
+            "current_game": self.test_game
+        }
+        response = export_notes(params)
+        self.assert_response(response, False, "Export notepad without title (should fail)")
+        
+        # Test export non-existent notepad
+        params = {
+            "scope": "notepad",
+            "title": "NonExistent",
+            "current_game": self.test_game
+        }
+        response = export_notes(params)
+        self.assert_response(response, False, "Export non-existent notepad (should fail)")
+
     def run_all_tests(self):
         """Run the complete test suite."""
         print("🧪 Starting Notepad Plugin Test Suite")
@@ -352,6 +447,7 @@ class NotepadPluginTester:
             self.test_read_notepad()
             self.test_list_notepads()
             self.test_search_entries()
+            self.test_export_notes()
             self.test_delete_notepad()
             self.test_game_separation()
             self.test_shutdown()

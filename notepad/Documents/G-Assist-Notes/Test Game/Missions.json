@@ -1,0 +1,58 @@
+{
+  "title": "Missions",
+  "game": "Test Game",
+  "created_at": "2025-07-20T08:53:32.950335",
+  "updated_at": "2025-07-20T16:50:38.026761",
+  "entries": [
+    {
+      "id": 1,
+      "content": "Kill 100 lv2 monsters and report back to Prof Amy",
+      "created_at": "2025-07-20T08:53:32.950368"
+    },
+    {
+      "id": 2,
+      "content": "Collect 50 cybernetic implants from corpo district",
+      "created_at": "2025-07-20T08:53:32.951230"
+    },
+    {
+      "id": 3,
+      "content": "Infiltrate Arasaka Tower and steal data chip",
+      "created_at": "2025-07-20T08:53:32.951644"
+    },
+    {
+      "id": 4,
+      "content": "Kill 100 lv2 monsters and report back to Prof Amy",
+      "created_at": "2025-07-20T16:48:02.934248"
+    },
+    {
+      "id": 5,
+      "content": "Collect 50 cybernetic implants from corpo district",
+      "created_at": "2025-07-20T16:48:02.934590"
+    },
+    {
+      "id": 6,
+      "content": "Infiltrate Arasaka Tower and steal data chip",
+      "created_at": "2025-07-20T16:48:02.934757"
+    },
+    {
+      "id": 7,
+      "content": "Kill 100 lv2 monsters and report back to Prof Amy",
+      "created_at": "2025-07-20T16:50:38.024146"
+    },
+    {
+      "id": 8,
+      "content": "Collect 50 cybernetic implants from corpo district",
+      "created_at": "2025-07-20T16:50:38.024806"
+    },
+    {
+      "id": 9,
+      "content": "Infiltrate Arasaka Tower and steal data chip",
+      "created_at": "2025-07-20T16:50:38.025025"
+    },
+    {
+      "id": 10,
+      "content": "Kill 100 lv2 monsters and report back to Prof Amy",
+      "created_at": "2025-07-20T16:50:38.026759"
+    }
+  ]
+}

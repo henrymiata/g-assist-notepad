@@ -476,6 +476,326 @@ def search_notes(params: Dict[str, str]) -> Response:
         logging.error(f"Error searching notepads: {e}")
         return generate_response(False, f"Failed to search notepads: {str(e)}")
 
+def export_notes(params: Dict[str, str]) -> Response:
+    """Export notepads to human-readable format on the Desktop.
+    
+    Args:
+        params (Dict[str, str]): Dictionary containing export parameters:
+                                - 'scope': "notepad", "game", or "all" (default: "game")
+                                - 'current_game': The game name (required for "notepad" and "game" scope)
+                                - 'title': The notepad title (required for "notepad" scope)
+    
+    Returns:
+        Response: Dictionary containing success status and export details.
+    """
+    scope = params.get("scope", "game")  # "notepad", "game", or "all"
+    current_game = params.get("current_game", "General")
+    notepad_title = params.get("title", "")
+    
+    # Get Desktop path (cross-platform)
+    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+    if not os.path.exists(desktop_path):
+        # Fallback to home directory if Desktop doesn't exist
+        desktop_path = os.path.expanduser("~")
+    
+    try:
+        ensure_notes_directory()
+        exported_files = []
+        
+        if scope == "notepad":
+            # Export single notepad
+            if not notepad_title:
+                return generate_response(False, "Missing required parameter: title (notepad name) for notepad scope")
+            
+            notepad_path = get_note_path(notepad_title, current_game)
+            if not os.path.exists(notepad_path):
+                return generate_response(False, f"Notepad '{notepad_title}' not found for game '{current_game}'")
+            
+            export_file = _export_single_notepad(notepad_path, desktop_path)
+            if export_file:
+                exported_files.append(export_file)
+                
+        elif scope == "game":
+            # Export all notepads from a specific game
+            game_dir = get_game_notes_dir(current_game)
+            if not os.path.exists(game_dir):
+                return generate_response(False, f"No notepads found for game '{current_game}'")
+            
+            pattern = os.path.join(game_dir, '*.json')
+            notepad_files = glob.glob(pattern)
+            
+            if not notepad_files:
+                return generate_response(False, f"No notepads found for game '{current_game}'")
+            
+            # Create a combined export for the game
+            export_file = _export_game_notepads(notepad_files, current_game, desktop_path)
+            if export_file:
+                exported_files.append(export_file)
+                
+        elif scope == "all":
+            # Export all notepads from all games
+            if not os.path.exists(NOTES_DIR):
+                return generate_response(False, "No notes directory found")
+            
+            # Get all game directories
+            game_dirs = [d for d in os.listdir(NOTES_DIR) 
+                        if os.path.isdir(os.path.join(NOTES_DIR, d))]
+            
+            if not game_dirs:
+                return generate_response(False, "No games with notepads found")
+            
+            # Create a master export file
+            export_file = _export_all_games(game_dirs, desktop_path)
+            if export_file:
+                exported_files.append(export_file)
+        else:
+            return generate_response(False, f"Invalid scope '{scope}'. Must be 'notepad', 'game', or 'all'")
+        
+        if exported_files:
+            files_list = "\n".join([f"- {os.path.basename(f)}" for f in exported_files])
+            message = f"Successfully exported to Desktop:\n{files_list}"
+            logging.info(f"Exported {len(exported_files)} files: {exported_files}")
+            return generate_response(True, message, {"exported_files": exported_files, "export_location": desktop_path})
+        else:
+            return generate_response(False, "No files were exported")
+            
+    except Exception as e:
+        logging.error(f"Error exporting notes: {e}")
+        return generate_response(False, f"Failed to export notes: {str(e)}")
+
+def _export_single_notepad(notepad_path: str, desktop_path: str) -> Optional[str]:
+    """Export a single notepad to a text file.
+    
+    Args:
+        notepad_path (str): Path to the notepad JSON file.
+        desktop_path (str): Path to the Desktop directory.
+    
+    Returns:
+        Optional[str]: Path to the exported file if successful, None otherwise.
+    """
+    try:
+        with open(notepad_path, 'r', encoding='utf-8') as f:
+            notepad_data = json.load(f)
+        
+        title = notepad_data.get("title", "Unknown")
+        game = notepad_data.get("game", "Unknown")
+        entries = notepad_data.get("entries", [])
+        
+        # Generate export filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_title = sanitize_filename(title).replace('.json', '')
+        safe_game = sanitize_game_name(game)
+        export_filename = f"G-Assist_Export_{safe_game}_{safe_title}_{timestamp}.txt"
+        export_path = os.path.join(desktop_path, export_filename)
+        
+        # Write human-readable content
+        with open(export_path, 'w', encoding='utf-8') as f:
+            f.write("="*60 + "\n")
+            f.write(f"G-ASSIST NOTEPAD EXPORT\n")
+            f.write("="*60 + "\n\n")
+            f.write(f"Notepad: {title}\n")
+            f.write(f"Game: {game}\n")
+            f.write(f"Created: {notepad_data.get('created_at', 'Unknown')}\n")
+            f.write(f"Last Updated: {notepad_data.get('updated_at', 'Unknown')}\n")
+            f.write(f"Total Entries: {len(entries)}\n")
+            f.write(f"Exported: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("\n" + "="*60 + "\n\n")
+            
+            if entries:
+                for entry in entries:
+                    f.write(f"Entry #{entry.get('id', 'Unknown')}\n")
+                    f.write("-" * 20 + "\n")
+                    f.write(f"Created: {entry.get('created_at', 'Unknown')}\n")
+                    f.write(f"Content:\n{entry.get('content', '')}\n")
+                    f.write("\n" + "-"*40 + "\n\n")
+            else:
+                f.write("No entries found in this notepad.\n")
+        
+        return export_path
+        
+    except Exception as e:
+        logging.error(f"Error exporting single notepad {notepad_path}: {e}")
+        return None
+
+def _export_game_notepads(notepad_files: List[str], game_name: str, desktop_path: str) -> Optional[str]:
+    """Export all notepads from a game to a single text file.
+    
+    Args:
+        notepad_files (List[str]): List of notepad file paths.
+        game_name (str): Name of the game.
+        desktop_path (str): Path to the Desktop directory.
+    
+    Returns:
+        Optional[str]: Path to the exported file if successful, None otherwise.
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_game = sanitize_game_name(game_name)
+        export_filename = f"G-Assist_Export_{safe_game}_All_Notepads_{timestamp}.txt"
+        export_path = os.path.join(desktop_path, export_filename)
+        
+        total_entries = 0
+        notepads_data = []
+        
+        # Load all notepads
+        for notepad_file in notepad_files:
+            try:
+                with open(notepad_file, 'r', encoding='utf-8') as f:
+                    notepad_data = json.load(f)
+                    notepads_data.append(notepad_data)
+                    total_entries += len(notepad_data.get("entries", []))
+            except Exception as e:
+                logging.warning(f"Error reading notepad {notepad_file}: {e}")
+                continue
+        
+        # Sort notepads by title
+        notepads_data.sort(key=lambda x: x.get("title", ""))
+        
+        # Write combined export
+        with open(export_path, 'w', encoding='utf-8') as f:
+            f.write("="*80 + "\n")
+            f.write(f"G-ASSIST GAME EXPORT - {game_name.upper()}\n")
+            f.write("="*80 + "\n\n")
+            f.write(f"Game: {game_name}\n")
+            f.write(f"Total Notepads: {len(notepads_data)}\n")
+            f.write(f"Total Entries: {total_entries}\n")
+            f.write(f"Exported: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("\n" + "="*80 + "\n\n")
+            
+            for i, notepad_data in enumerate(notepads_data, 1):
+                title = notepad_data.get("title", "Unknown")
+                entries = notepad_data.get("entries", [])
+                
+                f.write(f"NOTEPAD {i}: {title}\n")
+                f.write("="*60 + "\n")
+                f.write(f"Created: {notepad_data.get('created_at', 'Unknown')}\n")
+                f.write(f"Last Updated: {notepad_data.get('updated_at', 'Unknown')}\n")
+                f.write(f"Entries: {len(entries)}\n\n")
+                
+                if entries:
+                    for entry in entries:
+                        f.write(f"  Entry #{entry.get('id', 'Unknown')}\n")
+                        f.write("  " + "-" * 18 + "\n")
+                        f.write(f"  Created: {entry.get('created_at', 'Unknown')}\n")
+                        f.write(f"  Content:\n  {entry.get('content', '').replace(chr(10), chr(10) + '  ')}\n")
+                        f.write("\n")
+                else:
+                    f.write("  No entries in this notepad.\n\n")
+                
+                if i < len(notepads_data):
+                    f.write("\n" + "="*80 + "\n\n")
+        
+        return export_path
+        
+    except Exception as e:
+        logging.error(f"Error exporting game notepads for {game_name}: {e}")
+        return None
+
+def _export_all_games(game_dirs: List[str], desktop_path: str) -> Optional[str]:
+    """Export all notepads from all games to a single text file.
+    
+    Args:
+        game_dirs (List[str]): List of game directory names.
+        desktop_path (str): Path to the Desktop directory.
+    
+    Returns:
+        Optional[str]: Path to the exported file if successful, None otherwise.
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        export_filename = f"G-Assist_Export_All_Games_{timestamp}.txt"
+        export_path = os.path.join(desktop_path, export_filename)
+        
+        total_games = 0
+        total_notepads = 0
+        total_entries = 0
+        games_data = []
+        
+        # Load all games and their notepads
+        for game_dir in game_dirs:
+            game_path = os.path.join(NOTES_DIR, game_dir)
+            pattern = os.path.join(game_path, '*.json')
+            notepad_files = glob.glob(pattern)
+            
+            if not notepad_files:
+                continue
+            
+            game_data = {
+                "name": game_dir,
+                "notepads": []
+            }
+            
+            for notepad_file in notepad_files:
+                try:
+                    with open(notepad_file, 'r', encoding='utf-8') as f:
+                        notepad_data = json.load(f)
+                        game_data["notepads"].append(notepad_data)
+                        total_entries += len(notepad_data.get("entries", []))
+                except Exception as e:
+                    logging.warning(f"Error reading notepad {notepad_file}: {e}")
+                    continue
+            
+            if game_data["notepads"]:
+                game_data["notepads"].sort(key=lambda x: x.get("title", ""))
+                games_data.append(game_data)
+                total_games += 1
+                total_notepads += len(game_data["notepads"])
+        
+        # Sort games by name
+        games_data.sort(key=lambda x: x["name"])
+        
+        # Write master export
+        with open(export_path, 'w', encoding='utf-8') as f:
+            f.write("="*100 + "\n")
+            f.write("G-ASSIST MASTER EXPORT - ALL GAMES\n")
+            f.write("="*100 + "\n\n")
+            f.write(f"Total Games: {total_games}\n")
+            f.write(f"Total Notepads: {total_notepads}\n")
+            f.write(f"Total Entries: {total_entries}\n")
+            f.write(f"Exported: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("\n" + "="*100 + "\n\n")
+            
+            for game_idx, game_data in enumerate(games_data, 1):
+                game_name = game_data["name"]
+                notepads = game_data["notepads"]
+                
+                f.write(f"GAME {game_idx}: {game_name}\n")
+                f.write("="*80 + "\n")
+                f.write(f"Notepads: {len(notepads)}\n")
+                f.write(f"Total Entries: {sum(len(n.get('entries', [])) for n in notepads)}\n\n")
+                
+                for notepad_idx, notepad_data in enumerate(notepads, 1):
+                    title = notepad_data.get("title", "Unknown")
+                    entries = notepad_data.get("entries", [])
+                    
+                    f.write(f"  NOTEPAD {notepad_idx}: {title}\n")
+                    f.write("  " + "-"*50 + "\n")
+                    f.write(f"  Created: {notepad_data.get('created_at', 'Unknown')}\n")
+                    f.write(f"  Last Updated: {notepad_data.get('updated_at', 'Unknown')}\n")
+                    f.write(f"  Entries: {len(entries)}\n\n")
+                    
+                    if entries:
+                        for entry in entries:
+                            f.write(f"    Entry #{entry.get('id', 'Unknown')}\n")
+                            f.write("    " + "-" * 16 + "\n")
+                            f.write(f"    Created: {entry.get('created_at', 'Unknown')}\n")
+                            f.write(f"    Content:\n    {entry.get('content', '').replace(chr(10), chr(10) + '    ')}\n")
+                            f.write("\n")
+                    else:
+                        f.write("    No entries in this notepad.\n\n")
+                    
+                    if notepad_idx < len(notepads):
+                        f.write("\n")
+                
+                if game_idx < len(games_data):
+                    f.write("\n" + "="*100 + "\n\n")
+        
+        return export_path
+        
+    except Exception as e:
+        logging.error(f"Error exporting all games: {e}")
+        return None
+
 def read_command() -> Optional[Dict[str, Any]]:
     """Read command from stdin pipe.
     
@@ -633,6 +953,8 @@ def main() -> None:
                 response = delete_note(params)
             elif func == "search_notes":
                 response = search_notes(params)
+            elif func == "export_notes":
+                response = export_notes(params)
             elif func == "shutdown":
                 response = shutdown()
                 write_response(response)
