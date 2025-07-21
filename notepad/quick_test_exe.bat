@@ -15,40 +15,23 @@ if not exist "dist\notepad\g-assist-plugin-notepad.exe" (
 echo ✅ Testing executable: dist\notepad\g-assist-plugin-notepad.exe
 echo.
 
-REM Test 1: Initialize
-echo 🔄 Test 1: Initialize plugin
-echo {"tool_calls":[{"func":"initialize","params":{}}]} | dist\notepad\g-assist-plugin-notepad.exe
+REM Create a temporary file with all JSON commands
+echo {"tool_calls":[{"func":"initialize","params":{}}]} > temp_commands.txt
+echo {"tool_calls":[{"func":"create_note","params":{"title":"QuickTest","content":"This is a quick test from the exe","current_game":"TestGame"}}]} >> temp_commands.txt
+echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} >> temp_commands.txt
+echo {"tool_calls":[{"func":"read_note","params":{"title":"QuickTest","current_game":"TestGame"}}]} >> temp_commands.txt
+echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_commands.txt
+echo {"tool_calls":[{"func":"search_notes","params":{"query":"quick","current_game":"TestGame"}}]} >> temp_commands.txt
+echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_commands.txt
+
+echo 🔄 Running all tests in sequence...
 echo.
 
-REM Test 2: Create a note
-echo 🔄 Test 2: Create note
-echo {"tool_calls":[{"func":"create_note","params":{"title":"QuickTest","content":"This is a quick test from the exe","current_game":"TestGame"}}]} | dist\notepad\g-assist-plugin-notepad.exe
-echo.
+REM Feed all commands to a single instance of the plugin
+type temp_commands.txt | dist\notepad\g-assist-plugin-notepad.exe
 
-REM Test 3: List notes
-echo 🔄 Test 3: List notes
-echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} | dist\notepad\g-assist-plugin-notepad.exe
-echo.
-
-REM Test 4: Read the note we created
-echo 🔄 Test 4: Read note
-echo {"tool_calls":[{"func":"read_note","params":{"title":"QuickTest","current_game":"TestGame"}}]} | dist\notepad\g-assist-plugin-notepad.exe
-echo.
-
-REM Test 5: Export notes
-echo 🔄 Test 5: Export notes
-echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} | dist\notepad\g-assist-plugin-notepad.exe
-echo.
-
-REM Test 6: Search
-echo 🔄 Test 6: Search notes
-echo {"tool_calls":[{"func":"search_notes","params":{"query":"quick","current_game":"TestGame"}}]} | dist\notepad\g-assist-plugin-notepad.exe
-echo.
-
-REM Test 7: Shutdown
-echo 🔄 Test 7: Shutdown plugin
-echo {"tool_calls":[{"func":"shutdown","params":{}}]} | dist\notepad\g-assist-plugin-notepad.exe
-echo.
+REM Clean up
+del temp_commands.txt
 
 echo ✅ Quick test completed!
 echo.
