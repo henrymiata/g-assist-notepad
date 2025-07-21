@@ -71,20 +71,21 @@ echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_input.txt
 echo Testing plugin initialization and shutdown...
 echo.
 
-REM Start plugin in background and redirect input/output
-start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_input.txt > temp_output.txt 2>&1
-
-REM Wait for plugin to process and exit
-timeout /t 5 /nobreak > nul
+REM Run plugin with input redirection (synchronous)
+dist\notepad\g-assist-plugin-notepad.exe < temp_input.txt > temp_output.txt 2>&1
 
 REM Show results
 echo Plugin output:
 echo --------------
-type temp_output.txt
+if exist temp_output.txt (
+    type temp_output.txt
+) else (
+    echo No output file generated
+)
 
 REM Clean up
-del temp_input.txt
-del temp_output.txt
+if exist temp_input.txt del temp_input.txt
+if exist temp_output.txt del temp_output.txt
 
 echo.
 echo ✅ Basic connectivity test completed successfully!
@@ -109,20 +110,21 @@ echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_full_input.txt
 echo Running all test commands in sequence...
 echo.
 
-REM Start plugin in background and redirect input/output
-start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_full_input.txt > temp_full_output.txt 2>&1
-
-REM Wait for plugin to process all commands
-timeout /t 10 /nobreak > nul
+REM Run plugin with input redirection (synchronous)
+dist\notepad\g-assist-plugin-notepad.exe < temp_full_input.txt > temp_full_output.txt 2>&1
 
 REM Show results
 echo Plugin output:
 echo --------------
-type temp_full_output.txt
+if exist temp_full_output.txt (
+    type temp_full_output.txt
+) else (
+    echo No output file generated
+)
 
 REM Clean up
-del temp_full_input.txt
-del temp_full_output.txt
+if exist temp_full_input.txt del temp_full_input.txt
+if exist temp_full_output.txt del temp_full_output.txt
 
 echo.
 echo ✅ Full command test completed!
@@ -159,20 +161,23 @@ REM Create temp files for this command
 echo !json_cmd! > temp_interactive_input.txt
 echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_interactive_input.txt
 
-REM Execute command
-start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_interactive_input.txt > temp_interactive_output.txt 2>&1
-timeout /t 3 /nobreak > nul
+REM Execute command (synchronous)
+dist\notepad\g-assist-plugin-notepad.exe < temp_interactive_input.txt > temp_interactive_output.txt 2>&1
 
 REM Show results
 echo.
 echo Response:
 echo ---------
-type temp_interactive_output.txt
+if exist temp_interactive_output.txt (
+    type temp_interactive_output.txt
+) else (
+    echo No output generated
+)
 echo.
 
 REM Clean up
-del temp_interactive_input.txt
-del temp_interactive_output.txt
+if exist temp_interactive_input.txt del temp_interactive_input.txt
+if exist temp_interactive_output.txt del temp_interactive_output.txt
 
 goto :interactive_loop
 

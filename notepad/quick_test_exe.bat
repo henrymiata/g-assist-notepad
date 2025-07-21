@@ -27,20 +27,21 @@ echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_quick_input.txt
 echo 🔄 Running all tests in sequence...
 echo.
 
-REM Start plugin in background and redirect input/output
-start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_quick_input.txt > temp_quick_output.txt 2>&1
-
-REM Wait for plugin to process all commands
-timeout /t 8 /nobreak > nul
+REM Run plugin with input redirection (synchronous)
+dist\notepad\g-assist-plugin-notepad.exe < temp_quick_input.txt > temp_quick_output.txt 2>&1
 
 REM Show results
 echo Plugin output:
 echo --------------
-type temp_quick_output.txt
+if exist temp_quick_output.txt (
+    type temp_quick_output.txt
+) else (
+    echo No output file generated
+)
 
 REM Clean up
-del temp_quick_input.txt
-del temp_quick_output.txt
+if exist temp_quick_input.txt del temp_quick_input.txt
+if exist temp_quick_output.txt del temp_quick_output.txt
 
 echo ✅ Quick test completed!
 echo.

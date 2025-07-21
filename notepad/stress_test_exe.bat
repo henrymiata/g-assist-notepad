@@ -46,20 +46,21 @@ echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_stress_input.txt
 echo 🔄 Running comprehensive stress test...
 echo.
 
-REM Start plugin in background and redirect input/output
-start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_stress_input.txt > temp_stress_output.txt 2>&1
-
-REM Wait for plugin to process all commands (longer timeout for stress test)
-timeout /t 15 /nobreak > nul
+REM Run plugin with input redirection (synchronous)
+dist\notepad\g-assist-plugin-notepad.exe < temp_stress_input.txt > temp_stress_output.txt 2>&1
 
 REM Show results
 echo Plugin output:
 echo --------------
-type temp_stress_output.txt
+if exist temp_stress_output.txt (
+    type temp_stress_output.txt
+) else (
+    echo No output file generated
+)
 
 REM Clean up
-del temp_stress_input.txt
-del temp_stress_output.txt
+if exist temp_stress_input.txt del temp_stress_input.txt
+if exist temp_stress_output.txt del temp_stress_output.txt
 
 echo ✅ Stress test completed!
 echo.
