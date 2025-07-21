@@ -1,0 +1,190 @@
+@echo off
+REM Test Script for Built Notepad Plugin Executable (Windows)
+REM This script tests the compiled .exe file in dist/notepad folder
+
+setlocal enabledelayedexpansion
+
+echo 🧪 Notepad Plugin Executable Test Suite
+echo ==========================================
+
+REM Check if dist/notepad directory exists
+if not exist "dist\notepad" (
+    echo ❌ dist\notepad directory not found. Please run build.bat first.
+    pause
+    exit /b 1
+)
+
+REM Check if the executable exists
+if not exist "dist\notepad\g-assist-plugin-notepad.exe" (
+    echo ❌ g-assist-plugin-notepad.exe not found in dist\notepad\.
+    echo Please run build.bat to create the executable first.
+    pause
+    exit /b 1
+)
+
+echo ✅ Found executable: dist\notepad\g-assist-plugin-notepad.exe
+
+REM Check if manifest.json exists
+if not exist "dist\notepad\manifest.json" (
+    echo ❌ manifest.json not found in dist\notepad\.
+    pause
+    exit /b 1
+)
+
+echo ✅ Found manifest: dist\notepad\manifest.json
+
+echo.
+echo Choose test option:
+echo 1) Basic connectivity test (initialize + shutdown)
+echo 2) Full command test (test all plugin functions)
+echo 3) Interactive JSON command test
+echo 4) Show plugin info
+echo.
+
+set /p choice="Enter your choice (1-4): "
+
+if "%choice%"=="1" (
+    call :test_basic
+) else if "%choice%"=="2" (
+    call :test_full
+) else if "%choice%"=="3" (
+    call :test_interactive
+) else if "%choice%"=="4" (
+    call :show_info
+) else (
+    echo ❌ Invalid choice. Please run the script again.
+    pause
+    exit /b 1
+)
+
+goto :end
+
+:test_basic
+echo.
+echo 🔄 Running basic connectivity test...
+echo.
+
+REM Test 1: Initialize plugin
+echo Testing plugin initialization...
+echo {"tool_calls":[{"func":"initialize","params":{}}]} | dist\notepad\g-assist-plugin-notepad.exe
+if !errorlevel! neq 0 (
+    echo ❌ Plugin initialization failed
+    goto :test_end
+)
+
+echo.
+echo ✅ Basic connectivity test completed successfully!
+goto :test_end
+
+:test_full
+echo.
+echo 🔄 Running full command test...
+echo.
+
+REM Create a temporary batch file for complex testing
+echo @echo off > temp_test.bat
+echo echo {"tool_calls":[{"func":"initialize","params":{}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing create_note... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"create_note","params":{"title":"TestNotepad","content":"Test content from exe","current_game":"TestGame"}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing list_notes... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing read_note... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"read_note","params":{"title":"TestNotepad","current_game":"TestGame"}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing search_notes... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"search_notes","params":{"query":"Test","current_game":"TestGame"}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing export_notes... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing clear_notes... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"clear_notes","params":{"scope":"game","current_game":"TestGame"}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing undo_clear... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"undo_clear","params":{}}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+echo echo. >> temp_test.bat
+echo echo Testing shutdown... >> temp_test.bat
+echo echo {"tool_calls":[{"func":"shutdown","params":{}}]} ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test.bat
+
+REM Run the test
+call temp_test.bat
+
+REM Clean up
+del temp_test.bat
+
+echo.
+echo ✅ Full command test completed!
+goto :test_end
+
+:test_interactive
+echo.
+echo 🎮 Interactive JSON Command Test
+echo =================================
+echo.
+echo Enter JSON commands to test the plugin directly.
+echo Examples:
+echo   {"tool_calls":[{"func":"initialize","params":{}}]}
+echo   {"tool_calls":[{"func":"create_note","params":{"title":"Test","content":"Hello","current_game":"MyGame"}}]}
+echo   {"tool_calls":[{"func":"list_notes","params":{"current_game":"MyGame"}}]}
+echo   {"tool_calls":[{"func":"shutdown","params":{}}]}
+echo.
+echo Type 'quit' to exit interactive mode.
+echo.
+
+:interactive_loop
+set /p "json_cmd=JSON Command: "
+if /i "!json_cmd!"=="quit" goto :test_end
+
+if "!json_cmd!"=="" (
+    echo Please enter a valid JSON command or 'quit'
+    goto :interactive_loop
+)
+
+echo !json_cmd! | dist\notepad\g-assist-plugin-notepad.exe
+echo.
+goto :interactive_loop
+
+:show_info
+echo.
+echo 📋 Plugin Information
+echo =====================
+echo.
+
+REM Show manifest content
+echo Manifest.json content:
+echo ----------------------
+type dist\notepad\manifest.json
+echo.
+echo.
+
+REM Show file sizes
+echo File Information:
+echo -----------------
+for %%f in (dist\notepad\*) do (
+    echo %%~nxf - %%~zf bytes
+)
+echo.
+
+REM Show directory structure
+echo Directory Structure:
+echo --------------------
+dir /s dist\notepad
+
+goto :test_end
+
+:test_end
+echo.
+echo 📊 Test completed!
+echo.
+echo 💡 Tips:
+echo - Check %USERPROFILE%\Documents\G-Assist-Notes\ for created notes
+echo - Check %USERPROFILE%\notepad-plugin.log for detailed logs
+echo - Check Desktop for exported files
+pause
+goto :end
+
+:end
+endlocal
