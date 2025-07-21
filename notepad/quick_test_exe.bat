@@ -15,24 +15,32 @@ if not exist "dist\notepad\g-assist-plugin-notepad.exe" (
 echo ✅ Testing executable: dist\notepad\g-assist-plugin-notepad.exe
 echo.
 
+REM Create input commands file
+echo {"tool_calls":[{"func":"initialize","params":{}}]} > temp_quick_input.txt
+echo {"tool_calls":[{"func":"create_note","params":{"title":"QuickTest","content":"This is a quick test from the exe","current_game":"TestGame"}}]} >> temp_quick_input.txt
+echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} >> temp_quick_input.txt
+echo {"tool_calls":[{"func":"read_note","params":{"title":"QuickTest","current_game":"TestGame"}}]} >> temp_quick_input.txt
+echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_quick_input.txt
+echo {"tool_calls":[{"func":"search_notes","params":{"query":"quick","current_game":"TestGame"}}]} >> temp_quick_input.txt
+echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_quick_input.txt
+
 echo 🔄 Running all tests in sequence...
 echo.
 
-REM Create a batch file that sends commands with echo and proper pipe handling
-echo @echo off > temp_test_runner.bat
-echo ^(echo {"tool_calls":[{"func":"initialize","params":{}}]} >> temp_test_runner.bat
-echo echo {"tool_calls":[{"func":"create_note","params":{"title":"QuickTest","content":"This is a quick test from the exe","current_game":"TestGame"}}]} >> temp_test_runner.bat
-echo echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} >> temp_test_runner.bat
-echo echo {"tool_calls":[{"func":"read_note","params":{"title":"QuickTest","current_game":"TestGame"}}]} >> temp_test_runner.bat
-echo echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_test_runner.bat
-echo echo {"tool_calls":[{"func":"search_notes","params":{"query":"quick","current_game":"TestGame"}}]} >> temp_test_runner.bat
-echo echo {"tool_calls":[{"func":"shutdown","params":{}}]}^) ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_test_runner.bat
+REM Start plugin in background and redirect input/output
+start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_quick_input.txt > temp_quick_output.txt 2>&1
 
-REM Run the test
-call temp_test_runner.bat
+REM Wait for plugin to process all commands
+timeout /t 8 /nobreak > nul
+
+REM Show results
+echo Plugin output:
+echo --------------
+type temp_quick_output.txt
 
 REM Clean up
-del temp_test_runner.bat
+del temp_quick_input.txt
+del temp_quick_output.txt
 
 echo ✅ Quick test completed!
 echo.

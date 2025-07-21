@@ -64,16 +64,27 @@ echo.
 echo 🔄 Running basic connectivity test...
 echo.
 
-REM Create a batch file for basic testing
-echo @echo off > temp_basic_runner.bat
-echo ^(echo {"tool_calls":[{"func":"initialize","params":{}}]} >> temp_basic_runner.bat
-echo echo {"tool_calls":[{"func":"shutdown","params":{}}]}^) ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_basic_runner.bat
+REM Create input commands file
+echo {"tool_calls":[{"func":"initialize","params":{}}]} > temp_input.txt
+echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_input.txt
 
 echo Testing plugin initialization and shutdown...
-call temp_basic_runner.bat
+echo.
+
+REM Start plugin in background and redirect input/output
+start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_input.txt > temp_output.txt 2>&1
+
+REM Wait for plugin to process and exit
+timeout /t 5 /nobreak > nul
+
+REM Show results
+echo Plugin output:
+echo --------------
+type temp_output.txt
 
 REM Clean up
-del temp_basic_runner.bat
+del temp_input.txt
+del temp_output.txt
 
 echo.
 echo ✅ Basic connectivity test completed successfully!
@@ -84,24 +95,34 @@ echo.
 echo 🔄 Running full command test...
 echo.
 
-REM Create a batch file for full testing
-echo @echo off > temp_full_runner.bat
-echo ^(echo {"tool_calls":[{"func":"initialize","params":{}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"create_note","params":{"title":"TestNotepad","content":"Test content from exe","current_game":"TestGame"}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"read_note","params":{"title":"TestNotepad","current_game":"TestGame"}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"search_notes","params":{"query":"Test","current_game":"TestGame"}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"clear_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"undo_clear","params":{}}]} >> temp_full_runner.bat
-echo echo {"tool_calls":[{"func":"shutdown","params":{}}]}^) ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_full_runner.bat
+REM Create input commands file
+echo {"tool_calls":[{"func":"initialize","params":{}}]} > temp_full_input.txt
+echo {"tool_calls":[{"func":"create_note","params":{"title":"TestNotepad","content":"Test content from exe","current_game":"TestGame"}}]} >> temp_full_input.txt
+echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} >> temp_full_input.txt
+echo {"tool_calls":[{"func":"read_note","params":{"title":"TestNotepad","current_game":"TestGame"}}]} >> temp_full_input.txt
+echo {"tool_calls":[{"func":"search_notes","params":{"query":"Test","current_game":"TestGame"}}]} >> temp_full_input.txt
+echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_input.txt
+echo {"tool_calls":[{"func":"clear_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_input.txt
+echo {"tool_calls":[{"func":"undo_clear","params":{}}]} >> temp_full_input.txt
+echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_full_input.txt
 
 echo Running all test commands in sequence...
 echo.
-call temp_full_runner.bat
+
+REM Start plugin in background and redirect input/output
+start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_full_input.txt > temp_full_output.txt 2>&1
+
+REM Wait for plugin to process all commands
+timeout /t 10 /nobreak > nul
+
+REM Show results
+echo Plugin output:
+echo --------------
+type temp_full_output.txt
 
 REM Clean up
-del temp_full_runner.bat
+del temp_full_input.txt
+del temp_full_output.txt
 
 echo.
 echo ✅ Full command test completed!
@@ -111,6 +132,9 @@ goto :test_end
 echo.
 echo 🎮 Interactive JSON Command Test
 echo =================================
+echo.
+echo This mode sends individual commands to separate plugin instances.
+echo For multi-command sessions, use the plugin manually or try the full test.
 echo.
 echo Enter JSON commands to test the plugin directly.
 echo Examples:
@@ -131,8 +155,25 @@ if "!json_cmd!"=="" (
     goto :interactive_loop
 )
 
-echo !json_cmd! | dist\notepad\g-assist-plugin-notepad.exe
+REM Create temp files for this command
+echo !json_cmd! > temp_interactive_input.txt
+echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_interactive_input.txt
+
+REM Execute command
+start /b "" dist\notepad\g-assist-plugin-notepad.exe < temp_interactive_input.txt > temp_interactive_output.txt 2>&1
+timeout /t 3 /nobreak > nul
+
+REM Show results
 echo.
+echo Response:
+echo ---------
+type temp_interactive_output.txt
+echo.
+
+REM Clean up
+del temp_interactive_input.txt
+del temp_interactive_output.txt
+
 goto :interactive_loop
 
 :show_info
