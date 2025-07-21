@@ -2,7 +2,7 @@
   "title": "Locations",
   "game": "Test Game",
   "created_at": "2025-07-20T08:53:32.952963",
-  "updated_at": "2025-07-20T16:50:38.026188",
+  "updated_at": "2025-07-20T17:22:05.262270",
   "entries": [
     {
       "id": 1,
@@ -33,6 +33,16 @@
       "id": 6,
       "content": "Watson District - working-class area with many small businesses",
       "created_at": "2025-07-20T16:50:38.026187"
+    },
+    {
+      "id": 7,
+      "content": "Night City - sprawling metropolis dominated by corporations",
+      "created_at": "2025-07-20T17:22:05.262131"
+    },
+    {
+      "id": 8,
+      "content": "Watson District - working-class area with many small businesses",
+      "created_at": "2025-07-20T17:22:05.262269"
     }
   ]
 }

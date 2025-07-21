@@ -2,7 +2,7 @@
   "title": "Characters",
   "game": "Test Game",
   "created_at": "2025-07-20T08:53:32.951960",
-  "updated_at": "2025-07-20T16:50:38.027000",
+  "updated_at": "2025-07-20T17:22:05.262922",
   "entries": [
     {
       "id": 1,
@@ -53,6 +53,26 @@
       "id": 10,
       "content": "Prof Amy teaches cybernetics at Night City University",
       "created_at": "2025-07-20T16:50:38.026999"
+    },
+    {
+      "id": 11,
+      "content": "Prof Amy teaches cybernetics at Night City University",
+      "created_at": "2025-07-20T17:22:05.261645"
+    },
+    {
+      "id": 12,
+      "content": "Johnny Silverhand - legendary rockerboy and anti-corp terrorist",
+      "created_at": "2025-07-20T17:22:05.261812"
+    },
+    {
+      "id": 13,
+      "content": "Viktor Vector - underground ripperdoc in Watson district",
+      "created_at": "2025-07-20T17:22:05.261954"
+    },
+    {
+      "id": 14,
+      "content": "Test character",
+      "created_at": "2025-07-20T17:22:05.262920"
     }
   ]
 }

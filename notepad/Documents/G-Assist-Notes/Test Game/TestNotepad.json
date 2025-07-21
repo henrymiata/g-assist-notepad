@@ -1,0 +1,18 @@
+{
+  "title": "TestNotepad",
+  "game": "Test Game",
+  "created_at": "2025-07-20T17:58:48.342668",
+  "updated_at": "2025-07-21T05:02:58.598200",
+  "entries": [
+    {
+      "id": 1,
+      "content": "Test content for clear demo",
+      "created_at": "2025-07-20T17:58:48.342675"
+    },
+    {
+      "id": 2,
+      "content": "Demo content for clear and undo",
+      "created_at": "2025-07-21T05:02:58.598193"
+    }
+  ]
+}

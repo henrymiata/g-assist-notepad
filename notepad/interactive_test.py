@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
 Interactive Notepad Plugin Interface
-
-This script provides an interactive command-line interface to test the notepad plugin
+        print("🔍 search <query>             - Search entries")
+        print("📤 export [scope] [notepad]   - Export to Desktop")
+        print("🗑️  delete <notepad>           - Delete notepad")
+        print("🧹 clear [scope]              - Clear notes (safe)")
+        print("↩️  undo                       - Undo last clear")
+        print("🎮 game <name>                - Change current game")s script provides an interactive command-line interface to test the notepad plugin
 functionality. It simulates being G-Assist by sending JSON commands to the plugin
 functions and displaying the responses in a user-friendly format.
 """
@@ -37,7 +41,7 @@ ctypes.wintypes = MockWinTypes()
 # Now import the plugin
 from plugin import (
     create_note, read_note, list_notes, delete_note, search_notes, export_notes,
-    initialize, shutdown, generate_response
+    clear_notes, undo_clear, initialize, shutdown, generate_response
 )
 
 class InteractiveNotepadInterface:
@@ -75,6 +79,9 @@ class InteractiveNotepadInterface:
         print("   export notepad Missions    (export single notepad)")
         print("   export game                (export current game)")
         print("   export all                 (export all games)")
+        print("   clear game                 (clear current game)")
+        print("   clear all                  (clear all games)")
+        print("   undo                       (restore last clear)")
         print("   game Cyberpunk 2077")
         print("━" * 40)
         
@@ -285,6 +292,60 @@ class InteractiveNotepadInterface:
         print("👋 Goodbye!")
         self.running = False
         
+    def cmd_clear(self, args: list) -> None:
+        """Handle clear command."""
+        if len(args) == 0:
+            # Default: clear current game
+            scope = "game"
+        elif len(args) == 1:
+            if args[0].lower() in ["game", "all"]:
+                scope = args[0].lower()
+            else:
+                print("❌ Usage: clear [scope]")
+                print("   Examples:")
+                print("     clear               (clear current game)")
+                print("     clear game          (clear current game)")
+                print("     clear all           (clear all games)")
+                return
+        else:
+            print("❌ Usage: clear [scope]")
+            print("   Examples:")
+            print("     clear               (clear current game)")
+            print("     clear game          (clear current game)")
+            print("     clear all           (clear all games)")
+            return
+        
+        scope_desc = {
+            "game": f"game '{self.current_game}'",
+            "all": "all games"
+        }
+        
+        # Confirm clear operation
+        confirm = input(f"⚠️  Are you sure you want to clear all notepads from {scope_desc[scope]}? (y/N): ")
+        if confirm.lower() != 'y':
+            print("🚫 Clear operation cancelled")
+            return
+        
+        params = {
+            "scope": scope,
+            "current_game": self.current_game
+        }
+        
+        print(f"🔄 Clearing {scope_desc[scope]}...")
+        response = clear_notes(params)
+        print(self.format_response(response))
+        
+    def cmd_undo(self, args: list) -> None:
+        """Handle undo command."""
+        if len(args) != 0:
+            print("❌ Usage: undo")
+            print("   Example: undo (restores last cleared notes)")
+            return
+        
+        print("🔄 Restoring last cleared notes...")
+        response = undo_clear({})
+        print(self.format_response(response))
+
     def process_command(self, command_line: str) -> None:
         """Process a user command."""
         parts = command_line.strip().split()
@@ -302,6 +363,8 @@ class InteractiveNotepadInterface:
             'search': self.cmd_search,
             'export': self.cmd_export,
             'delete': self.cmd_delete,
+            'clear': self.cmd_clear,
+            'undo': self.cmd_undo,
             'game': self.cmd_game,
             'help': self.cmd_help,
             'quit': self.cmd_quit,

@@ -121,6 +121,35 @@
           "description": "The currently playing game name (required for 'notepad' and 'game' scope)."
         }
       }
+    },
+    {
+      "name": "clear_notes",
+      "description": "Clear notepads by moving them to a recycle bin for safe removal. Can clear all notepads from the current game or all games.",
+      "tags": [
+        "notepad",
+        "clear",
+        "delete"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "description": "Clear scope: 'game' (all notepads from current game) or 'all' (all notepads from all games). Default: 'game'."
+        },
+        "current_game": {
+          "type": "string",
+          "description": "The currently playing game name (required for 'game' scope)."
+        }
+      }
+    },
+    {
+      "name": "undo_clear",
+      "description": "Restore the most recently cleared notepads from the recycle bin. This can only be done once per clear operation.",
+      "tags": [
+        "notepad",
+        "undo",
+        "restore"
+      ],
+      "properties": {}
     }
   ]
 }

@@ -17,6 +17,9 @@ Commands Supported:
     - list_notes: List all available notepads for a game
     - delete_note: Delete an entry from a notepad or delete entire notepad
     - search_notes: Search through notepad entries
+    - export_notes: Export notepads to human-readable format on Desktop
+    - clear_notes: Clear notepads by moving them to recycle bin (safe removal)
+    - undo_clear: Restore the last cleared notepads from recycle bin
     - shutdown: Gracefully shutdown the plugin
 
 Dependencies:
@@ -30,10 +33,12 @@ import json
 import logging
 import os
 import sys
+import shutil
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from ctypes import byref, windll, wintypes
 import glob
+import shutil
 
 # Type definitions
 Response = Dict[str, Any]
@@ -54,6 +59,9 @@ NOTES_DIR = os.path.join(os.environ.get("USERPROFILE", "."), 'Documents', 'G-Ass
 
 LOG_FILE = os.path.join(os.environ.get("USERPROFILE", "."), 'notepad-plugin.log')
 """Path to log file for plugin operations."""
+
+RECYCLE_BIN_DIR = os.path.join(NOTES_DIR, '.recycle_bin')
+"""Directory where cleared notes are stored for recovery."""
 
 def setup_logging() -> None:
     """Configure logging with appropriate format and level.
@@ -76,6 +84,12 @@ def ensure_notes_directory() -> None:
     if not os.path.exists(NOTES_DIR):
         os.makedirs(NOTES_DIR)
         logging.info(f"Created notes directory: {NOTES_DIR}")
+
+def ensure_recycle_bin_directory() -> None:
+    """Ensure the recycle bin directory exists."""
+    if not os.path.exists(RECYCLE_BIN_DIR):
+        os.makedirs(RECYCLE_BIN_DIR)
+        logging.info(f"Created recycle bin directory: {RECYCLE_BIN_DIR}")
 
 def sanitize_filename(title: str) -> str:
     """Sanitize a title to be used as a filename.
@@ -307,7 +321,7 @@ def list_notes(params: Dict[str, str]) -> Response:
     """List all available notepads for a specific game.
     
     Args:
-        params (Dict[str, str]): Dictionary containing 'current_game' key.
+        params (Dict[str, str): Dictionary containing 'current_game' key.
     
     Returns:
         Response: Dictionary containing success status and list of notepads.
@@ -717,29 +731,27 @@ def _export_all_games(game_dirs: List[str], desktop_path: str) -> Optional[str]:
             pattern = os.path.join(game_path, '*.json')
             notepad_files = glob.glob(pattern)
             
-            if not notepad_files:
-                continue
-            
-            game_data = {
-                "name": game_dir,
-                "notepads": []
-            }
-            
-            for notepad_file in notepad_files:
-                try:
-                    with open(notepad_file, 'r', encoding='utf-8') as f:
-                        notepad_data = json.load(f)
-                        game_data["notepads"].append(notepad_data)
-                        total_entries += len(notepad_data.get("entries", []))
-                except Exception as e:
-                    logging.warning(f"Error reading notepad {notepad_file}: {e}")
-                    continue
-            
-            if game_data["notepads"]:
-                game_data["notepads"].sort(key=lambda x: x.get("title", ""))
-                games_data.append(game_data)
-                total_games += 1
-                total_notepads += len(game_data["notepads"])
+            if notepad_files:
+                game_data = {
+                    "name": game_dir,
+                    "notepads": []
+                }
+                
+                for notepad_file in notepad_files:
+                    try:
+                        with open(notepad_file, 'r', encoding='utf-8') as f:
+                            notepad_data = json.load(f)
+                            game_data["notepads"].append(notepad_data)
+                            total_entries += len(notepad_data.get("entries", []))
+                    except Exception as e:
+                        logging.warning(f"Error reading notepad {notepad_file}: {e}")
+                        continue
+                
+                if game_data["notepads"]:
+                    game_data["notepads"].sort(key=lambda x: x.get("title", ""))
+                    games_data.append(game_data)
+                    total_games += 1
+                    total_notepads += len(game_data["notepads"])
         
         # Sort games by name
         games_data.sort(key=lambda x: x["name"])
@@ -908,6 +920,289 @@ def shutdown() -> Response:
     logging.info("Shutting down notepad plugin")
     return generate_response(True, "Notepad plugin shutdown successfully")
 
+def clear_notes(params: Dict[str, str]) -> Response:
+    """Clear notepads by moving them to recycle bin.
+    
+    Args:
+        params (Dict[str, str]): Dictionary containing clear parameters:
+                                - 'scope': "game" or "all" (default: "game")
+                                - 'current_game': The game name (required for "game" scope)
+    
+    Returns:
+        Response: Dictionary containing success status and clear details.
+    """
+    scope = params.get("scope", "game")  # "game" or "all"
+    current_game = params.get("current_game", "General")
+    
+    try:
+        ensure_notes_directory()
+        ensure_recycle_bin_directory()
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        cleared_items = []
+        
+        if scope == "game":
+            # Clear all notepads from a specific game
+            game_dir = get_game_notes_dir(current_game)
+            if not os.path.exists(game_dir):
+                return generate_response(False, f"No notepads found for game '{current_game}'")
+            
+            pattern = os.path.join(game_dir, '*.json')
+            notepad_files = glob.glob(pattern)
+            
+            if not notepad_files:
+                return generate_response(False, f"No notepads found for game '{current_game}'")
+            
+            # Create backup directory in recycle bin
+            safe_game_name = sanitize_game_name(current_game)
+            backup_dir = os.path.join(RECYCLE_BIN_DIR, f"game_{safe_game_name}_{timestamp}")
+            os.makedirs(backup_dir)
+            
+            # Move files to recycle bin
+            for notepad_file in notepad_files:
+                filename = os.path.basename(notepad_file)
+                backup_path = os.path.join(backup_dir, filename)
+                shutil.move(notepad_file, backup_path)
+                cleared_items.append(filename.replace('.json', ''))
+            
+            # Remove empty game directory if it exists
+            try:
+                if os.path.exists(game_dir) and not os.listdir(game_dir):
+                    os.rmdir(game_dir)
+            except OSError:
+                pass  # Directory not empty or other issue, that's okay
+            
+            # Create restore info file
+            restore_info = {
+                "type": "game",
+                "game": current_game,
+                "timestamp": timestamp,
+                "items": cleared_items,
+                "backup_dir": backup_dir
+            }
+            
+            restore_info_path = os.path.join(RECYCLE_BIN_DIR, f"restore_info_{timestamp}.json")
+            with open(restore_info_path, 'w', encoding='utf-8') as f:
+                json.dump(restore_info, f, indent=2, ensure_ascii=False)
+            
+            logging.info(f"Cleared {len(cleared_items)} notepads from game '{current_game}' to recycle bin")
+            return generate_response(True, 
+                f"Cleared {len(cleared_items)} notepads from game '{current_game}': {', '.join(cleared_items)}. Use 'undo_clear' to restore if needed.",
+                {"cleared_count": len(cleared_items), "game": current_game, "timestamp": timestamp})
+                
+        elif scope == "all":
+            # Clear all notepads from all games
+            if not os.path.exists(NOTES_DIR):
+                return generate_response(False, "No notes directory found")
+            
+            # Get all game directories
+            game_dirs = [d for d in os.listdir(NOTES_DIR) 
+                        if os.path.isdir(os.path.join(NOTES_DIR, d)) and d != '.recycle_bin']
+            
+            if not game_dirs:
+                return generate_response(False, "No games with notepads found")
+            
+            # Create backup directory in recycle bin
+            backup_dir = os.path.join(RECYCLE_BIN_DIR, f"all_games_{timestamp}")
+            os.makedirs(backup_dir)
+            
+            total_cleared = 0
+            games_cleared = []
+            
+            for game_dir_name in game_dirs:
+                game_dir_path = os.path.join(NOTES_DIR, game_dir_name)
+                pattern = os.path.join(game_dir_path, '*.json')
+                notepad_files = glob.glob(pattern)
+                
+                if notepad_files:
+                    # Create game subdirectory in backup
+                    game_backup_dir = os.path.join(backup_dir, game_dir_name)
+                    os.makedirs(game_backup_dir)
+                    
+                    game_items = []
+                    for notepad_file in notepad_files:
+                        filename = os.path.basename(notepad_file)
+                        backup_path = os.path.join(game_backup_dir, filename)
+                        shutil.move(notepad_file, backup_path)
+                        game_items.append(filename.replace('.json', ''))
+                        total_cleared += 1
+                    
+                    games_cleared.append({
+                        "game": game_dir_name,
+                        "items": game_items
+                    })
+                    
+                    # Remove empty game directory
+                    try:
+                        if os.path.exists(game_dir_path) and not os.listdir(game_dir_path):
+                            os.rmdir(game_dir_path)
+                    except OSError:
+                        pass
+            
+            if total_cleared == 0:
+                # Clean up empty backup directory
+                os.rmdir(backup_dir)
+                return generate_response(False, "No notepads found to clear")
+            
+            # Create restore info file
+            restore_info = {
+                "type": "all",
+                "timestamp": timestamp,
+                "total_cleared": total_cleared,
+                "games": games_cleared,
+                "backup_dir": backup_dir
+            }
+            
+            restore_info_path = os.path.join(RECYCLE_BIN_DIR, f"restore_info_{timestamp}.json")
+            with open(restore_info_path, 'w', encoding='utf-8') as f:
+                json.dump(restore_info, f, indent=2, ensure_ascii=False)
+            
+            logging.info(f"Cleared {total_cleared} notepads from {len(games_cleared)} games to recycle bin")
+            games_summary = ', '.join([f"{g['game']} ({len(g['items'])})" for g in games_cleared])
+            return generate_response(True, 
+                f"Cleared {total_cleared} notepads from {len(games_cleared)} games: {games_summary}. Use 'undo_clear' to restore if needed.",
+                {"cleared_count": total_cleared, "games_count": len(games_cleared), "timestamp": timestamp})
+        else:
+            return generate_response(False, f"Invalid scope '{scope}'. Must be 'game' or 'all'")
+            
+    except Exception as e:
+        logging.error(f"Error clearing notes: {e}")
+        return generate_response(False, f"Failed to clear notes: {str(e)}")
+
+def undo_clear(params: Dict[str, str]) -> Response:
+    """Restore the last cleared notepads from recycle bin.
+    
+    Args:
+        params (Dict[str, str]): Dictionary (no parameters required - restores most recent clear)
+    
+    Returns:
+        Response: Dictionary containing success status and restore details.
+    """
+    try:
+        ensure_recycle_bin_directory()
+        
+        # Find the most recent restore info file
+        pattern = os.path.join(RECYCLE_BIN_DIR, "restore_info_*.json")
+        restore_files = glob.glob(pattern)
+        
+        if not restore_files:
+            return generate_response(False, "No cleared notes found to restore")
+        
+        # Sort by timestamp (filename) and get the most recent
+        restore_files.sort(reverse=True)
+        latest_restore_file = restore_files[0]
+        
+        try:
+            with open(latest_restore_file, 'r', encoding='utf-8') as f:
+                restore_info = json.load(f)
+        except Exception as e:
+            return generate_response(False, f"Error reading restore information: {str(e)}")
+        
+        backup_dir = restore_info.get("backup_dir")
+        if not backup_dir or not os.path.exists(backup_dir):
+            return generate_response(False, "Backup directory not found - cannot restore")
+        
+        ensure_notes_directory()
+        restored_count = 0
+        
+        if restore_info.get("type") == "game":
+            # Restore single game
+            game_name = restore_info.get("game")
+            items = restore_info.get("items", [])
+            
+            ensure_game_notes_directory(game_name)
+            game_dir = get_game_notes_dir(game_name)
+            
+            # Move files back from recycle bin
+            for filename in os.listdir(backup_dir):
+                if filename.endswith('.json'):
+                    backup_path = os.path.join(backup_dir, filename)
+                    restore_path = os.path.join(game_dir, filename)
+                    
+                    # Check if file already exists (don't overwrite)
+                    if os.path.exists(restore_path):
+                        logging.warning(f"File already exists, skipping: {restore_path}")
+                        continue
+                    
+                    shutil.move(backup_path, restore_path)
+                    restored_count += 1
+            
+            # Clean up backup directory if empty
+            try:
+                if not os.listdir(backup_dir):
+                    os.rmdir(backup_dir)
+            except OSError:
+                pass
+            
+            # Remove restore info file
+            os.remove(latest_restore_file)
+            
+            logging.info(f"Restored {restored_count} notepads to game '{game_name}'")
+            return generate_response(True, 
+                f"Restored {restored_count} notepads to game '{game_name}': {', '.join(items)}",
+                {"restored_count": restored_count, "game": game_name})
+                
+        elif restore_info.get("type") == "all":
+            # Restore all games
+            games = restore_info.get("games", [])
+            total_restored = 0
+            games_restored = []
+            
+            for game_backup_dir in os.listdir(backup_dir):
+                game_backup_path = os.path.join(backup_dir, game_backup_dir)
+                if not os.path.isdir(game_backup_path):
+                    continue
+                
+                ensure_game_notes_directory(game_backup_dir)
+                game_dir = get_game_notes_dir(game_backup_dir)
+                
+                game_restored_count = 0
+                for filename in os.listdir(game_backup_path):
+                    if filename.endswith('.json'):
+                        backup_path = os.path.join(game_backup_path, filename)
+                        restore_path = os.path.join(game_dir, filename)
+                        
+                        # Check if file already exists (don't overwrite)
+                        if os.path.exists(restore_path):
+                            logging.warning(f"File already exists, skipping: {restore_path}")
+                            continue
+                        
+                        shutil.move(backup_path, restore_path)
+                        game_restored_count += 1
+                        total_restored += 1
+                
+                if game_restored_count > 0:
+                    games_restored.append(f"{game_backup_dir} ({game_restored_count})")
+                
+                # Clean up empty game backup directory
+                try:
+                    if not os.listdir(game_backup_path):
+                        os.rmdir(game_backup_path)
+                except OSError:
+                    pass
+            
+            # Clean up main backup directory if empty
+            try:
+                if not os.listdir(backup_dir):
+                    os.rmdir(backup_dir)
+            except OSError:
+                pass
+            
+            # Remove restore info file
+            os.remove(latest_restore_file)
+            
+            logging.info(f"Restored {total_restored} notepads from {len(games_restored)} games")
+            games_summary = ', '.join(games_restored)
+            return generate_response(True, 
+                f"Restored {total_restored} notepads from {len(games_restored)} games: {games_summary}",
+                {"restored_count": total_restored, "games_count": len(games_restored)})
+        else:
+            return generate_response(False, "Unknown restore type - cannot restore")
+            
+    except Exception as e:
+        logging.error(f"Error restoring notes: {e}")
+        return generate_response(False, f"Failed to restore notes: {str(e)}")
+
 def main() -> None:
     """Main plugin loop.
     
@@ -955,6 +1250,10 @@ def main() -> None:
                 response = search_notes(params)
             elif func == "export_notes":
                 response = export_notes(params)
+            elif func == "clear_notes":
+                response = clear_notes(params)
+            elif func == "undo_clear":
+                response = undo_clear(params)
             elif func == "shutdown":
                 response = shutdown()
                 write_response(response)

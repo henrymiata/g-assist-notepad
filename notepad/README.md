@@ -9,6 +9,8 @@ A powerful note-taking plugin for NVIDIA G-Assist that lets you create, manage, 
 - Delete notepads you no longer need
 - Search through notepad entries across all categories
 - Export notepads to human-readable text files on your Desktop
+- Clear notepads safely (moves to recycle bin) for current game or all games
+- Undo the last clear operation to restore notes from recycle bin
 - Game-specific organization (notes are separated by current game)
 - Automatic file management and organization
 - Detailed logging for troubleshooting
@@ -17,6 +19,7 @@ A powerful note-taking plugin for NVIDIA G-Assist that lets you create, manage, 
 - **Notepad Organization**: Create themed notepads like "Missions", "Characters", "Locations"
 - **Game Separation**: Notes are automatically organized by the current game you're playing
 - **Smart Search**: Find entries by searching through all notepad content
+- **Safe Clear Operations**: Clear notepads with recycle bin protection and one-time undo
 - **Export Functionality**: Export individual notepads, game collections, or everything to Desktop
 - **Entry Management**: Each notepad contains multiple numbered entries
 - **Organized Storage**: Notes are automatically saved in your Documents folder with game folders
@@ -76,12 +79,20 @@ This creates the executable and prepares all necessary files.
 "Hey G-Assist, export my current game notes" (exports all notepads from current game)
 "Hey G-Assist, export all my notes" (exports all notepads from all games)
 
+### Clearing Notepads (Safe Removal)
+"Hey G-Assist, clear my current game notes" (clears all notepads from current game)
+"Hey G-Assist, clear all my notes" (clears all notepads from all games)
+
+### Undoing Clear Operations
+"Hey G-Assist, undo my last clear" (restores the most recently cleared notepads)
+
 ### Deleting a Notepad
 "Hey G-Assist, delete my notepad titled 'Old Ideas'"
 
 ## Note Storage
 - Notes are stored in: `%USERPROFILE%\Documents\G-Assist-Notes\{Game Name}\`
 - Each notepad is saved as a JSON file containing multiple entries
+- Cleared notes are moved to: `%USERPROFILE%\Documents\G-Assist-Notes\.recycle_bin\`
 - Exported files are saved to your Desktop with timestamps
 - Log files are saved to: `%USERPROFILE%\notepad-plugin.log`
 

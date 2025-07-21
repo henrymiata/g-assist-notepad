@@ -2,7 +2,7 @@
   "title": "Missions",
   "game": "Test Game",
   "created_at": "2025-07-20T08:53:32.950335",
-  "updated_at": "2025-07-20T16:50:38.026761",
+  "updated_at": "2025-07-20T17:22:05.262757",
   "entries": [
     {
       "id": 1,
@@ -53,6 +53,26 @@
       "id": 10,
       "content": "Kill 100 lv2 monsters and report back to Prof Amy",
       "created_at": "2025-07-20T16:50:38.026759"
+    },
+    {
+      "id": 11,
+      "content": "Kill 100 lv2 monsters and report back to Prof Amy",
+      "created_at": "2025-07-20T17:22:05.260806"
+    },
+    {
+      "id": 12,
+      "content": "Collect 50 cybernetic implants from corpo district",
+      "created_at": "2025-07-20T17:22:05.261095"
+    },
+    {
+      "id": 13,
+      "content": "Infiltrate Arasaka Tower and steal data chip",
+      "created_at": "2025-07-20T17:22:05.261340"
+    },
+    {
+      "id": 14,
+      "content": "Test mission for clear",
+      "created_at": "2025-07-20T17:22:05.262755"
     }
   ]
 }
