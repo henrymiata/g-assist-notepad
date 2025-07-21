@@ -64,15 +64,16 @@ echo.
 echo 🔄 Running basic connectivity test...
 echo.
 
-REM Create a temporary file with basic commands
-echo {"tool_calls":[{"func":"initialize","params":{}}]} > temp_basic_commands.txt
-echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_basic_commands.txt
+REM Create a batch file for basic testing
+echo @echo off > temp_basic_runner.bat
+echo ^(echo {"tool_calls":[{"func":"initialize","params":{}}]} >> temp_basic_runner.bat
+echo echo {"tool_calls":[{"func":"shutdown","params":{}}]}^) ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_basic_runner.bat
 
 echo Testing plugin initialization and shutdown...
-type temp_basic_commands.txt | dist\notepad\g-assist-plugin-notepad.exe
+call temp_basic_runner.bat
 
 REM Clean up
-del temp_basic_commands.txt
+del temp_basic_runner.bat
 
 echo.
 echo ✅ Basic connectivity test completed successfully!
@@ -83,23 +84,24 @@ echo.
 echo 🔄 Running full command test...
 echo.
 
-REM Create a temporary file with all test commands
-echo {"tool_calls":[{"func":"initialize","params":{}}]} > temp_full_commands.txt
-echo {"tool_calls":[{"func":"create_note","params":{"title":"TestNotepad","content":"Test content from exe","current_game":"TestGame"}}]} >> temp_full_commands.txt
-echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} >> temp_full_commands.txt
-echo {"tool_calls":[{"func":"read_note","params":{"title":"TestNotepad","current_game":"TestGame"}}]} >> temp_full_commands.txt
-echo {"tool_calls":[{"func":"search_notes","params":{"query":"Test","current_game":"TestGame"}}]} >> temp_full_commands.txt
-echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_commands.txt
-echo {"tool_calls":[{"func":"clear_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_commands.txt
-echo {"tool_calls":[{"func":"undo_clear","params":{}}]} >> temp_full_commands.txt
-echo {"tool_calls":[{"func":"shutdown","params":{}}]} >> temp_full_commands.txt
+REM Create a batch file for full testing
+echo @echo off > temp_full_runner.bat
+echo ^(echo {"tool_calls":[{"func":"initialize","params":{}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"create_note","params":{"title":"TestNotepad","content":"Test content from exe","current_game":"TestGame"}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"list_notes","params":{"current_game":"TestGame"}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"read_note","params":{"title":"TestNotepad","current_game":"TestGame"}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"search_notes","params":{"query":"Test","current_game":"TestGame"}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"export_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"clear_notes","params":{"scope":"game","current_game":"TestGame"}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"undo_clear","params":{}}]} >> temp_full_runner.bat
+echo echo {"tool_calls":[{"func":"shutdown","params":{}}]}^) ^| dist\notepad\g-assist-plugin-notepad.exe >> temp_full_runner.bat
 
 echo Running all test commands in sequence...
 echo.
-type temp_full_commands.txt | dist\notepad\g-assist-plugin-notepad.exe
+call temp_full_runner.bat
 
 REM Clean up
-del temp_full_commands.txt
+del temp_full_runner.bat
 
 echo.
 echo ✅ Full command test completed!
